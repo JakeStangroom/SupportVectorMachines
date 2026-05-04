@@ -10,21 +10,11 @@
     ]
   },
   {
-    "objectID": "index.html#what-is-included",
-    "href": "index.html#what-is-included",
+    "objectID": "index.html#sec-bye",
+    "href": "index.html#sec-bye",
     "title": "Support Vector Machines",
-    "section": "0.1 What Is Included",
-    "text": "0.1 What Is Included\nThese notes cover:\n\nmaximal margin classifiers\nsupport vectors and margins\nsoft-margin classifiers and slack variables\nthe cost parameter\nnonlinear decision boundaries\nfeature expansion and kernels\npractical implementation in R with e1071\ntuning and interpretation\n\nThe mathematics of SVMs is still present, but is not covered in any rigour. These notes keep the formal setup because it helps explain why SVMs work. An appendix is included to aid here. If there are any concepts you feel are necessary to add, please let me know.",
-    "crumbs": [
-      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Support Vector Machines</span>"
-    ]
-  },
-  {
-    "objectID": "index.html#practical-notes",
-    "href": "index.html#practical-notes",
-    "title": "Support Vector Machines",
-    "section": "0.2 Practical Notes",
-    "text": "0.2 Practical Notes\n\nThe full worked R examples are included directly in the relevant chapters.\nThese examples are written to be self-contained.",
+    "section": "What Is Included",
+    "text": "What Is Included\nThese notes cover:\n\nmaximal margin classifiers\nsupport vectors and margins\nsoft-margin classifiers and slack variables\nthe cost parameter\nnonlinear decision boundaries\nfeature expansion and kernels\npractical implementation in R with e1071\ntuning and interpretation\n\nThe mathematics of SVMs is still present, but is not covered in any rigour. These notes keep the formal setup because it helps explain why SVMs work. An appendix is included to aid here. If there are any concepts you feel are necessary to add, please let me know.",
     "crumbs": [
       "<span class='chapter-number'>1</span>  <span class='chapter-title'>Support Vector Machines</span>"
     ]
@@ -34,17 +24,7 @@
     "href": "01-introduction.html",
     "title": "2  A Brief Overview",
     "section": "",
-    "text": "2.1 Support Vector Machines\nA Support Vector Machine (SVM) is a classification model that chooses a decision boundary by balancing two goals: separating the classes correctly and keeping a wide buffer around the boundary. That buffer is known as the margin.\nUnder an ideal scenario, the model chooses the separating boundary which correctly classifies each training data point with the largest margin. Under less perfect cases, it allows some margin violations when that gives a boundary that is more stable and likely to generalise better.\nSVMs are useful because they connect three ideas cleanly:",
-    "crumbs": [
-      "<span class='chapter-number'>2</span>  <span class='chapter-title'>A Brief Overview</span>"
-    ]
-  },
-  {
-    "objectID": "01-introduction.html#support-vector-machines",
-    "href": "01-introduction.html#support-vector-machines",
-    "title": "2  A Brief Overview",
-    "section": "",
-    "text": "classification through finding a boundary\ngeneralisation by keeping a margin away from the nearest training points\nflexibility through feature transformations and kernels",
+    "text": "2.1 Main Goals\nA Support Vector Machine (SVM) is a classification model that chooses a decision boundary by balancing two goals: separating the classes correctly and keeping a wide buffer around the boundary. That buffer is known as the margin.\nUnder an ideal scenario, the model chooses the separating boundary which correctly classifies each training data point with the largest margin. Under less perfect cases, it allows some margin violations when that gives a boundary that is more stable and likely to generalise better.\nSVMs are useful because they connect three ideas cleanly:\nBy the end of the topic, you should be able to answer the following:\nGeometry and optimisation:\nTuning and practice:\nExtensions and relevance:",
     "crumbs": [
       "<span class='chapter-number'>2</span>  <span class='chapter-title'>A Brief Overview</span>"
     ]
@@ -53,8 +33,8 @@
     "objectID": "01-introduction.html#main-goals",
     "href": "01-introduction.html#main-goals",
     "title": "2  A Brief Overview",
-    "section": "2.2 Main Goals",
-    "text": "2.2 Main Goals\nBy the end of the topic, you should be able to answer the following:\nGeometry and optimisation:\n\nWhat does an SVM optimise?\nWhy are support vectors important?\n\nTuning and practice:\n\nWhat does the cost parameter do?\nHow can we tune the cost parameter?\n\nExtensions and relevance:\n\nHow do kernels allow nonlinear classification?\nWhen might SVMs be a good classification model choice?",
+    "section": "",
+    "text": "What does an SVM optimise?\nWhy are support vectors important?\n\n\n\nWhat does the cost parameter do?\nHow can we tune the cost parameter?\n\n\n\nHow do kernels allow nonlinear classification?\nWhen might SVMs be a good classification model choice?",
     "crumbs": [
       "<span class='chapter-number'>2</span>  <span class='chapter-title'>A Brief Overview</span>"
     ]
@@ -63,8 +43,8 @@
     "objectID": "01-introduction.html#the-basic-problem",
     "href": "01-introduction.html#the-basic-problem",
     "title": "2  A Brief Overview",
-    "section": "2.3 The Basic Problem",
-    "text": "2.3 The Basic Problem\nSuppose that we have a binary classification problem where each observation has a predictor vector \\(x_i \\in \\mathbb{R}^p\\) and class label \\(y_i \\in \\{-1, +1\\}\\).\nAn SVM classifier creates a score function, \\(f:\\mathbb{R}^p \\rightarrow \\mathbb{R}\\), with the form\n\\[f(\\mathbf{x}) =  \\mathbf{w} \\cdot \\mathbf{x} + b.\\] Classification of observations is based on the signed outcome of the score function.\nAt its core, the SVM creates a boundary where this expression equals zero: \\[\\mathbf{w} \\cdot \\mathbf{x} + b = 0.\\] Here \\(w\\) is the vector of coefficients that controls the orientation of the boundary, and \\(b\\) is the scalar intercept that shifts the boundary.\nGeometrically, \\(f(\\mathbf{x})\\) is a signed side-of-boundary score. Its sign tells us which side of the boundary the point \\(\\mathbf{x}\\) is on; whereby \\(f(\\mathbf{x})=0\\) means the point lies exactly on the boundary.\nThe traditional SVM structure for binary classes can be extended to multiclass problems by combining several binary SVMs; however, these are beyond the scope of this course.",
+    "section": "2.2 The Basic Problem",
+    "text": "2.2 The Basic Problem\nSuppose that we have a binary classification problem where each observation has a predictor vector \\(x_i \\in \\mathbb{R}^p\\) and class label \\(y_i \\in \\{-1, +1\\}\\).\nAn SVM classifier creates a score function, \\(f:\\mathbb{R}^p \\rightarrow \\mathbb{R}\\), with the form\n\\[f(\\mathbf{x}) =  \\mathbf{w} \\cdot \\mathbf{x} + b.\\] Classification of observations is based on the signed outcome of the score function.\nAt its core, the SVM creates a boundary where this expression equals zero: \\[\\mathbf{w} \\cdot \\mathbf{x} + b = 0.\\] Here \\(w\\) is the vector of coefficients that controls the orientation of the boundary, and \\(b\\) is the scalar intercept that shifts the boundary.\nGeometrically, \\(f(\\mathbf{x})\\) is a signed side-of-boundary score. Its sign tells us which side of the boundary the point \\(\\mathbf{x}\\) is on; whereby \\(f(\\mathbf{x})=0\\) means the point lies exactly on the boundary.\nThe traditional SVM structure for binary classes can be extended to multiclass problems by combining several binary SVMs; however, these are beyond the scope of this course.",
     "crumbs": [
       "<span class='chapter-number'>2</span>  <span class='chapter-title'>A Brief Overview</span>"
     ]
@@ -73,8 +53,8 @@
     "objectID": "01-introduction.html#primary-intuition",
     "href": "01-introduction.html#primary-intuition",
     "title": "2  A Brief Overview",
-    "section": "2.4 Primary Intuition",
-    "text": "2.4 Primary Intuition\nConsider a simple 2D example where the two classes are linearly separable, such as that shown in Figure 2.1. Based on the observations, we can easily find a boundary line which perfectly separates the points into their correct classes. In fact, there are infinitely many of these lines; however, we do not want just any separating line. We want one that leaves a wide gap between the two classes. A wider gap improves the generalisation of the model for classifying future points into their correct class. That gap is known as the margin.\n\n\n\n\n\n\n\n\nFigure 2.1: A simple 2D example illustrating potential separating boundary lines.\n\n\n\n\n\nWe will solidify the following ideas:\n\nnot all separating boundaries are equally good\nthe best linear boundary is the one with the largest margin\nonly a few points determine that boundary\n\nOnly the closest observations can shrink the margin. Points far inside their own class could move slightly without changing the chosen boundary. The closest, boundary-defining observations are known as the support vectors.",
+    "section": "2.3 Primary Intuition",
+    "text": "2.3 Primary Intuition\nConsider a simple 2D example where the two classes are linearly separable, such as that shown in Figure 2.1. Based on the observations, we can easily find a boundary line which perfectly separates the points into their correct classes. In fact, there are infinitely many of these lines; however, we do not want just any separating line. We want one that leaves a wide gap between the two classes. A wider gap improves the generalisation of the model for classifying future points into their correct class. That gap is known as the margin.\n\n\n\n\n\n\n\n\nFigure 2.1: A simple 2D example illustrating potential separating boundary lines.\n\n\n\n\n\nWe will solidify the following ideas:\n\nnot all separating boundaries are equally good\nthe best linear boundary is the one with the largest margin\nonly a few points determine that boundary\n\nOnly the closest observations can shrink the margin. Points far inside their own class could move slightly without changing the chosen boundary. The closest, boundary-defining observations are known as the support vectors.",
     "crumbs": [
       "<span class='chapter-number'>2</span>  <span class='chapter-title'>A Brief Overview</span>"
     ]

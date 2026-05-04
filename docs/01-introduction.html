@@ -173,10 +173,9 @@ window.Quarto = {
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#support-vector-machines" id="toc-support-vector-machines" class="nav-link active" data-scroll-target="#support-vector-machines"><span class="header-section-number">2.1</span> Support Vector Machines</a></li>
-  <li><a href="#main-goals" id="toc-main-goals" class="nav-link" data-scroll-target="#main-goals"><span class="header-section-number">2.2</span> Main Goals</a></li>
-  <li><a href="#the-basic-problem" id="toc-the-basic-problem" class="nav-link" data-scroll-target="#the-basic-problem"><span class="header-section-number">2.3</span> The Basic Problem</a></li>
-  <li><a href="#primary-intuition" id="toc-primary-intuition" class="nav-link" data-scroll-target="#primary-intuition"><span class="header-section-number">2.4</span> Primary Intuition</a></li>
+  <li><a href="#main-goals" id="toc-main-goals" class="nav-link active" data-scroll-target="#main-goals"><span class="header-section-number">2.1</span> Main Goals</a></li>
+  <li><a href="#the-basic-problem" id="toc-the-basic-problem" class="nav-link" data-scroll-target="#the-basic-problem"><span class="header-section-number">2.2</span> The Basic Problem</a></li>
+  <li><a href="#primary-intuition" id="toc-primary-intuition" class="nav-link" data-scroll-target="#primary-intuition"><span class="header-section-number">2.3</span> Primary Intuition</a></li>
   </ul>
 </nav>
     </div>
@@ -202,8 +201,6 @@ window.Quarto = {
 </header>
 
 
-<section id="support-vector-machines" class="level2" data-number="2.1">
-<h2 data-number="2.1" class="anchored" data-anchor-id="support-vector-machines"><span class="header-section-number">2.1</span> Support Vector Machines</h2>
 <p>A Support Vector Machine (SVM) is a classification model that chooses a decision boundary by balancing two goals: separating the classes correctly and keeping a wide buffer around the boundary. That buffer is known as the <strong>margin</strong>.</p>
 <p>Under an ideal scenario, the model chooses the separating boundary which correctly classifies each training data point with the largest margin. Under less perfect cases, it allows some margin violations when that gives a boundary that is more stable and likely to generalise better.</p>
 <p>SVMs are useful because they connect three ideas cleanly:</p>
@@ -212,9 +209,8 @@ window.Quarto = {
 <li>generalisation by keeping a margin away from the nearest training points</li>
 <li>flexibility through feature transformations and kernels</li>
 </ul>
-</section>
-<section id="main-goals" class="level2" data-number="2.2">
-<h2 data-number="2.2" class="anchored" data-anchor-id="main-goals"><span class="header-section-number">2.2</span> Main Goals</h2>
+<section id="main-goals" class="level2" data-number="2.1">
+<h2 data-number="2.1" class="anchored" data-anchor-id="main-goals"><span class="header-section-number">2.1</span> Main Goals</h2>
 <p>By the end of the topic, you should be able to answer the following:</p>
 <p>Geometry and optimisation:</p>
 <ul>
@@ -232,8 +228,8 @@ window.Quarto = {
 <li>When might SVMs be a good classification model choice?</li>
 </ul>
 </section>
-<section id="the-basic-problem" class="level2" data-number="2.3">
-<h2 data-number="2.3" class="anchored" data-anchor-id="the-basic-problem"><span class="header-section-number">2.3</span> The Basic Problem</h2>
+<section id="the-basic-problem" class="level2" data-number="2.2">
+<h2 data-number="2.2" class="anchored" data-anchor-id="the-basic-problem"><span class="header-section-number">2.2</span> The Basic Problem</h2>
 <p>Suppose that we have a binary classification problem where each observation has a predictor vector <span class="math inline">\(x_i \in \mathbb{R}^p\)</span> and class label <span class="math inline">\(y_i \in \{-1, +1\}\)</span>.</p>
 <p>An SVM classifier creates a score function, <span class="math inline">\(f:\mathbb{R}^p \rightarrow \mathbb{R}\)</span>, with the form</p>
 <p><span class="math display">\[f(\mathbf{x}) =  \mathbf{w} \cdot \mathbf{x} + b.\]</span> Classification of observations is based on the signed outcome of the score function.</p>
@@ -241,8 +237,8 @@ window.Quarto = {
 <p>Geometrically, <span class="math inline">\(f(\mathbf{x})\)</span> is a <strong>signed side-of-boundary score</strong>. Its sign tells us which side of the boundary the point <span class="math inline">\(\mathbf{x}\)</span> is on; whereby <span class="math inline">\(f(\mathbf{x})=0\)</span> means the point lies exactly on the boundary.</p>
 <p>The traditional SVM structure for binary classes can be extended to multiclass problems by combining several binary SVMs; however, these are <em>beyond the scope</em> of this course.</p>
 </section>
-<section id="primary-intuition" class="level2" data-number="2.4">
-<h2 data-number="2.4" class="anchored" data-anchor-id="primary-intuition"><span class="header-section-number">2.4</span> Primary Intuition</h2>
+<section id="primary-intuition" class="level2" data-number="2.3">
+<h2 data-number="2.3" class="anchored" data-anchor-id="primary-intuition"><span class="header-section-number">2.3</span> Primary Intuition</h2>
 <p>Consider a simple 2D example where the two classes are linearly separable, such as that shown in <a href="#fig-introMarginSketch" class="quarto-xref">Figure&nbsp;<span>2.1</span></a>. Based on the observations, we can easily find a boundary line which perfectly separates the points into their correct classes. In fact, there are infinitely many of these lines; however, we do not want just any separating line. We want one that leaves a wide gap between the two classes. A wider gap improves the generalisation of the model for classifying future points into their correct class. That gap is known as the <strong>margin</strong>.</p>
 <div class="cell">
 <div class="cell-output-display">
