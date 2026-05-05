@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>2&nbsp; A Brief Overview – Support Vector Machines</title>
+<title>Appendix A — Some Mathematical Support – Support Vector Machines</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -33,8 +33,7 @@ ul.task-list li input[type="checkbox"] {
 <script src="site_libs/quarto-search/fuse.min.js"></script>
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
-<link href="./02-maximal-margin.html" rel="next">
-<link href="./index.html" rel="prev">
+<link href="./03-soft-margin.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="site_libs/quarto-html/popper.min.js"></script>
@@ -114,7 +113,7 @@ window.Quarto = {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./01-introduction.html"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">A Brief Overview</span></a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./appendix-concepts.html">Appendices</a></li><li class="breadcrumb-item"><a href="./appendix-concepts.html"><span class="chapter-number">A</span>&nbsp; <span class="chapter-title">Some Mathematical Support</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -147,7 +146,7 @@ window.Quarto = {
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./01-introduction.html" class="sidebar-item-text sidebar-link active">
+  <a href="./01-introduction.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">A Brief Overview</span></span></a>
   </div>
 </li>
@@ -174,7 +173,7 @@ window.Quarto = {
       <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./appendix-concepts.html" class="sidebar-item-text sidebar-link">
+  <a href="./appendix-concepts.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text"><span class="chapter-number">A</span>&nbsp; <span class="chapter-title">Some Mathematical Support</span></span></a>
   </div>
 </li>
@@ -190,18 +189,25 @@ window.Quarto = {
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#main-goals" id="toc-main-goals" class="nav-link active" data-scroll-target="#main-goals"><span class="header-section-number">2.1</span> Main Goals</a></li>
-  <li><a href="#the-basic-problem" id="toc-the-basic-problem" class="nav-link" data-scroll-target="#the-basic-problem"><span class="header-section-number">2.2</span> The Basic Problem</a></li>
-  <li><a href="#primary-intuition" id="toc-primary-intuition" class="nav-link" data-scroll-target="#primary-intuition"><span class="header-section-number">2.3</span> Primary Intuition</a></li>
+  <li><a href="#convex-hulls" id="toc-convex-hulls" class="nav-link active" data-scroll-target="#convex-hulls"><span class="header-section-number">A.1</span> Convex Hulls</a>
+  <ul class="collapse">
+  <li><a href="#formal-definition" id="toc-formal-definition" class="nav-link" data-scroll-target="#formal-definition"><span class="header-section-number">A.1.1</span> Formal Definition</a></li>
+  </ul></li>
+  <li><a href="#primal-and-dual-problems" id="toc-primal-and-dual-problems" class="nav-link" data-scroll-target="#primal-and-dual-problems"><span class="header-section-number">A.2</span> Primal and Dual Problems</a>
+  <ul class="collapse">
+  <li><a href="#the-primal-problem" id="toc-the-primal-problem" class="nav-link" data-scroll-target="#the-primal-problem"><span class="header-section-number">A.2.1</span> The Primal Problem</a></li>
+  <li><a href="#a-dual-perspective" id="toc-a-dual-perspective" class="nav-link" data-scroll-target="#a-dual-perspective"><span class="header-section-number">A.2.2</span> A Dual Perspective</a></li>
+  <li><a href="#support-vectors-actively-constrain-the-boundary" id="toc-support-vectors-actively-constrain-the-boundary" class="nav-link" data-scroll-target="#support-vectors-actively-constrain-the-boundary"><span class="header-section-number">A.2.3</span> Support Vectors Actively Constrain The Boundary</a></li>
+  </ul></li>
   </ul>
 </nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default">
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./appendix-concepts.html">Appendices</a></li><li class="breadcrumb-item"><a href="./appendix-concepts.html"><span class="chapter-number">A</span>&nbsp; <span class="chapter-title">Some Mathematical Support</span></a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">A Brief Overview</span></h1>
+<h1 class="title">Appendix A — Some Mathematical Support</h1>
 </div>
 
 
@@ -218,68 +224,115 @@ window.Quarto = {
 </header>
 
 
-<p>A Support Vector Machine (SVM) is a classification model that chooses a decision boundary by balancing two goals: separating the classes correctly and keeping a wide buffer around the boundary. That buffer is known as the <strong>margin</strong>.</p>
-<p>Under an ideal scenario, the model chooses the separating boundary which correctly classifies each training data point with the largest margin. Under less perfect cases, it allows some margin violations when that gives a boundary that is more stable and likely to generalise better.</p>
-<p>SVMs are useful because they connect three ideas cleanly:</p>
+<p>This appendix collects short explanations of ideas that <em>support</em> the SVM material.</p>
+<section id="convex-hulls" class="level2" data-number="A.1">
+<h2 data-number="A.1" class="anchored" data-anchor-id="convex-hulls"><span class="header-section-number">A.1</span> Convex Hulls</h2>
+<p>In mathematics, a hull is some form of smallest set containing a collection of points. In isolation, clearly this is very vague, but we usually consider a type of hull such as a convex hull.</p>
+<p>Consider a collection of points drawn on a page and imagine stretching a rubber band around the outside of those points. Once you let go of the rubber band, the shape enclosed by the rubber band, the remaining shape is the <strong>convex hull</strong> of the points.</p>
+<p>The convex hull includes:</p>
 <ul>
-<li>classification through finding a boundary</li>
-<li>generalisation by keeping a margin away from the nearest training points</li>
-<li>flexibility through feature transformations and kernels</li>
+<li>the original points</li>
+<li>the straight-line edges between the outermost points</li>
+<li>every point inside the enclosed region</li>
 </ul>
-<section id="main-goals" class="level2" data-number="2.1">
-<h2 data-number="2.1" class="anchored" data-anchor-id="main-goals"><span class="header-section-number">2.1</span> Main Goals</h2>
-<p>By the end of the topic, you should be able to answer the following:</p>
-<p>Geometry and optimisation:</p>
-<ul>
-<li>What does an SVM optimise?</li>
-<li>Why are support vectors important?</li>
-</ul>
-<p>Tuning and practice:</p>
-<ul>
-<li>What does the <em>cost</em> parameter do?</li>
-<li>How can we tune the <em>cost</em> parameter?</li>
-</ul>
-<p>Extensions and relevance:</p>
-<ul>
-<li>How do kernels allow nonlinear classification?</li>
-<li>When might SVMs be a good classification model choice?</li>
-</ul>
+<p>The key word is <strong>convex</strong>. A region is convex if the straight line between any two points in the region also stays inside the region.</p>
+<section id="formal-definition" class="level3" data-number="A.1.1">
+<h3 data-number="A.1.1" class="anchored" data-anchor-id="formal-definition"><span class="header-section-number">A.1.1</span> Formal Definition</h3>
+<p>For points <span class="math inline">\(x_1, x_2, \dots, x_n\)</span>, the convex hull is the set of all convex combinations:</p>
+<p><span class="math display">\[
+\left\{\sum_{i=1}^n \lambda_i x_i :
+\lambda_i \geq 0,\ \sum_{i=1}^n \lambda_i = 1 \right\}.
+\]</span></p>
+<p>The coefficients <span class="math inline">\(\lambda_i\)</span> are non-negative and add to one. This means a convex combination is a weighted average of the original points.</p>
 </section>
-<section id="the-basic-problem" class="level2" data-number="2.2">
-<h2 data-number="2.2" class="anchored" data-anchor-id="the-basic-problem"><span class="header-section-number">2.2</span> The Basic Problem</h2>
-<p>Suppose that we have a binary classification problem where each observation has a predictor vector <span class="math inline">\(x_i \in \mathbb{R}^p\)</span> and class label <span class="math inline">\(y_i \in \{-1, +1\}\)</span>.</p>
-<p>An SVM classifier creates a score function, <span class="math inline">\(f:\mathbb{R}^p \rightarrow \mathbb{R}\)</span>, with the form</p>
-<p><span class="math display">\[f(\mathbf{x}) =  \mathbf{w} \cdot \mathbf{x} + b.\]</span> Classification of observations is based on the signed outcome of the score function.</p>
-<p>At its core, the SVM creates a boundary where this expression equals zero: <span class="math display">\[\mathbf{w} \cdot \mathbf{x} + b = 0.\]</span> Here <span class="math inline">\(w\)</span> is the vector of coefficients that controls the orientation of the boundary, and <span class="math inline">\(b\)</span> is the scalar intercept that shifts the boundary.</p>
-<p>Geometrically, <span class="math inline">\(f(\mathbf{x})\)</span> is a <strong>signed side-of-boundary score</strong>. Its sign tells us which side of the boundary the point <span class="math inline">\(\mathbf{x}\)</span> is on; whereby <span class="math inline">\(f(\mathbf{x})=0\)</span> means the point lies exactly on the boundary.</p>
-<p>The traditional SVM structure for binary classes can be extended to multiclass problems by combining several binary SVMs; however, these are <em>beyond the scope</em> of this course.</p>
 </section>
-<section id="primary-intuition" class="level2" data-number="2.3">
-<h2 data-number="2.3" class="anchored" data-anchor-id="primary-intuition"><span class="header-section-number">2.3</span> Primary Intuition</h2>
-<p>Consider a simple 2D example where the two classes are linearly separable, such as that shown in <a href="#fig-introMarginSketch" class="quarto-xref">Figure&nbsp;<span>2.1</span></a>. Based on the observations, we can easily find a boundary line which perfectly separates the points into their correct classes. In fact, there are infinitely many of these lines; however, we do not want just any separating line. We want one that leaves a wide gap between the two classes. A wider gap improves the generalisation of the model for classifying future points into their correct class. That gap is known as the <strong>margin</strong>.</p>
-<div class="cell">
-<div class="cell-output-display">
-<div id="fig-introMarginSketch" class="quarto-float quarto-figure quarto-figure-center anchored">
-<figure class="quarto-float quarto-float-fig figure">
-<div aria-describedby="fig-introMarginSketch-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="01-introduction_files/figure-html/fig-introMarginSketch-1.png" class="img-fluid figure-img" width="672">
-</div>
-<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-introMarginSketch-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;2.1: A simple 2D example illustrating potential separating boundary lines.
-</figcaption>
-</figure>
-</div>
-</div>
-</div>
-<p>We will solidify the following ideas:</p>
+<section id="primal-and-dual-problems" class="level2" data-number="A.2">
+<h2 data-number="A.2" class="anchored" data-anchor-id="primal-and-dual-problems"><span class="header-section-number">A.2</span> Primal and Dual Problems</h2>
+<p>In mathematics, and more specifically optimisation, the concepts of dual and primal relate to the perspective in which a problem is viewed. At its core, the primal problem is the direct problem, the natural perspective of the problem; whilst, the dual problem is a less natural perspective which may offer an easier solution. Both the primal and dual have the same solution; it just comes down to mathematical ease associated with finding it.</p>
+<p>Let us consider the maximal margin classifier problem as an example. The <strong>primal</strong> problem asks:</p>
+<blockquote class="blockquote">
+<p>Which boundary should we choose?</p>
+</blockquote>
+<p>The dual problem asks a different but equivalent question:</p>
+<blockquote class="blockquote">
+<p>Which training points should be allowed to influence the boundary, and by how much?</p>
+</blockquote>
+<p>We <em>should</em> already know that the optimal boundary is completely defined by a few observations known as support vectors. The dual problem directly connects the optimisation to these support vectors. To see this, we can take a deeper look at the optimisation.</p>
+<section id="the-primal-problem" class="level3" data-number="A.2.1">
+<h3 data-number="A.2.1" class="anchored" data-anchor-id="the-primal-problem"><span class="header-section-number">A.2.1</span> The Primal Problem</h3>
+<p>For the hard-margin classifier, we established the natural, <strong>primal</strong>, optimisation by</p>
+<p><span class="math display">\[
+\min_{b,\mathbf{w}} \frac{1}{2}\lVert \mathbf{w} \rVert^2
+\]</span></p>
+<p>subject to</p>
+<p><span class="math display">\[
+y_i(\mathbf{w}\cdot \mathbf{x}_i + b) \geq 1,
+\qquad i = 1,\dots,n.
+\]</span></p>
+<p>Recall the interpretation of this:</p>
 <ul>
-<li>not all separating boundaries are equally good</li>
-<li>the best linear boundary is the one with the largest margin</li>
-<li>only a few points determine that boundary</li>
+<li>choose the boundary by finding <span class="math inline">\(\mathbf{w}\)</span> and <span class="math inline">\(b\)</span></li>
+<li>make the margin around the boundary as wide as possible</li>
+<li>make sure to correctly classify every observation</li>
 </ul>
-<p>Only the closest observations can shrink the margin. Points far inside their own class could move slightly without changing the chosen boundary. The closest, boundary-defining observations are known as the <strong>support vectors</strong>.</p>
+<p>This is the direct interpretation from the geometric intuition used to explain SVMs. We know that this optimisation problem should be well behaved, it is a quadratic objective with linear constraints; however, that does not necessarily mean that it is easy to solve.</p>
+</section>
+<section id="a-dual-perspective" class="level3" data-number="A.2.2">
+<h3 data-number="A.2.2" class="anchored" data-anchor-id="a-dual-perspective"><span class="header-section-number">A.2.2</span> A Dual Perspective</h3>
+<p>By introducing <span class="math inline">\(y_i\)</span> as an encoder, the primal easily characterises one margin constraint for each observation. The dual introduces one coefficient, <span class="math inline">\(\alpha_i\)</span>, for each of these constraints. Here, <span class="math inline">\(\alpha_i\)</span> measures the importance of the <span class="math inline">\(i^{th}\)</span> observation on the boundary.</p>
+<p>Therefore, two cases exist:</p>
+<ul>
+<li>if <span class="math inline">\(\alpha_i = 0\)</span>, the observation has no direct influence on the boundary</li>
+<li>if <span class="math inline">\(\alpha_i &gt; 0\)</span>, the observation is actively determining the boundary</li>
+</ul>
+<p>These “active” observations are the support vectors. The dual problem can then be phrased as an optimisation of these <span class="math inline">\(\alpha_i\)</span> coefficients, essentially optimising which observations should be important for defining the optimal boundary. This is achieved with a little bit of optimisation theory from Lagrange, and a little more elbow grease (by that, we obviously mean taking some derivatives).</p>
+<p>A while later, the dual optimisation problem is given by</p>
+<p><span class="math display">\[
+\max_{\alpha_1,\dots,\alpha_n}
+\left[
+\sum_{i=1}^n \alpha_i
+- \frac{1}{2}
+\sum_{i=1}^n \sum_{j=1}^n
+\alpha_i \alpha_j y_i y_j x_i^\top x_j
+\right]
+\]</span></p>
+<p>subject to</p>
+<p><span class="math display">\[
+\alpha_i \geq 0,
+\qquad i = 1,\dots,n,
+\]</span></p>
+<p>and</p>
+<p><span class="math display">\[
+\sum_{i=1}^n \alpha_i y_i = 0.
+\]</span></p>
+<p>Notice that the dual relies on the</p>
+<ul>
+<li>the class labels <span class="math inline">\(y_i\)</span></li>
+<li>the coefficients <span class="math inline">\(\alpha_i\)</span></li>
+<li>dot products between pairs of observations, <span class="math inline">\(\mathbf{x}_i \cdot \mathbf{x}_j\)</span></li>
+</ul>
+<p>More importantly, we no longer directly optimise over <span class="math inline">\(\mathbf{w}\)</span> or <span class="math inline">\(b\)</span>. But this is fine,</p>
+<p>After solving for the set of <span class="math inline">\(\alpha_i\)</span>, the boundary <span class="math inline">\(\mathbf{w}\)</span> is obtained via</p>
+<p><span class="math display">\[
+\mathbf{w} = \sum_{i=1}^n \alpha_i y_i \mathbf{x}_i.
+\]</span></p>
+<p>Therefore, the optimal boundary is built as a linear combination of observations. Furthermore, since most observations are associated with an <span class="math inline">\(\alpha_i = 0\)</span>, they do not contribute to the sum. The remaining observations, with <span class="math inline">\(\alpha_i &gt; 0\)</span>, are the support vectors.</p>
+</section>
+<section id="support-vectors-actively-constrain-the-boundary" class="level3" data-number="A.2.3">
+<h3 data-number="A.2.3" class="anchored" data-anchor-id="support-vectors-actively-constrain-the-boundary"><span class="header-section-number">A.2.3</span> Support Vectors Actively Constrain The Boundary</h3>
+<p>We have said that the support vectors actively constrain the optimisation. This is related to <span class="math inline">\(\alpha_i\)</span> because the dual solution satisfies the equation</p>
+<p><span class="math display">\[
+\alpha_i\left[y_i(\mathbf{w}\cdot \mathbf{x}_i + b) - 1\right] = 0.
+\]</span></p>
+<p>This product can be zero in two ways:</p>
+<ul>
+<li><span class="math inline">\(\alpha_i = 0\)</span>, so the point does not influence the solution</li>
+<li><span class="math inline">\(y_i(\mathbf{w}\cdot \mathbf{x}_i + b) = 1\)</span>, so the point lies exactly on the margin</li>
+</ul>
+<p>Therefore, if <span class="math inline">\(\alpha_i &gt; 0\)</span>, the point must lie on the margin.</p>
 
 
+</section>
 </section>
 
 </main> <!-- /main -->
@@ -685,14 +738,11 @@ Figure&nbsp;2.1: A simple 2D example illustrating potential separating boundary 
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="./index.html" class="pagination-link" aria-label="Support Vector Machines">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Support Vector Machines</span></span>
+      <a href="./03-soft-margin.html" class="pagination-link" aria-label="Soft Margin Classifier">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Soft Margin Classifier</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="./02-maximal-margin.html" class="pagination-link" aria-label="Maximal Margin Classifier">
-        <span class="nav-page-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Maximal Margin Classifier</span></span> <i class="bi bi-arrow-right-short"></i>
-      </a>
   </div>
 </nav>
 </div> <!-- /content -->

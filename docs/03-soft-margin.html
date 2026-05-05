@@ -68,6 +68,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/quarto-search/fuse.min.js"></script>
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
+<link href="./appendix-concepts.html" rel="next">
 <link href="./02-maximal-margin.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
@@ -197,6 +198,23 @@ window.Quarto = {
  <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Soft Margin Classifier</span></span></a>
   </div>
 </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Appendices</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./appendix-concepts.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">A</span>&nbsp; <span class="chapter-title">Some Mathematical Support</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
     </ul>
     </div>
 </nav>
@@ -333,7 +351,7 @@ Figure&nbsp;4.1: Slack variables in practice: inside-margin points are tolerated
 </div>
 <p>At this stage, these penalties are only incorporated in the constraints to allow violation. They do not form part of the objective function of the optimisation yet, essentially letting the optimiser ignore the constraints by setting <span class="math inline">\(\xi_i\)</span> almost arbitrarily. Let us remedy this by updating the objective function of the soft margin optimisation to</p>
 <p><span class="math display">\[
-\min_{b,w,\xi} \frac{1}{2}\lVert w \rVert^2 + C \sum_{i=1}^n \xi_i
+\min_{b,w,\xi} \frac{1}{2}\lVert \mathbf{w} \rVert^2 + C \sum_{i=1}^n \xi_i
 \]</span> subject to</p>
 <p><span class="math display">\[
 y_i(\mathbf{w}\cdot\mathbf{x}_i + b) \geq 1 - \xi_i, \qquad i = 1,\dots,n
@@ -342,6 +360,31 @@ y_i(\mathbf{w}\cdot\mathbf{x}_i + b) \geq 1 - \xi_i, \qquad i = 1,\dots,n
 <p><span class="math display">\[
 \xi_i \geq 0, \qquad i = 1,\dots,n.
 \]</span></p>
+<div class="callout callout-style-simple callout-note no-icon callout-titled">
+<div class="callout-header d-flex align-content-center collapsed" data-bs-toggle="collapse" data-bs-target=".callout-1-contents" aria-controls="callout-1" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon no-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Note</span>A little more about the optimisation… again
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-1" class="callout-1-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>The above optimisation problem adds <span class="math inline">\(\mathbf{\xi}\)</span> to the optimisation variables. Again, the method of approach is to find the dual of this problem with the help of the Lagrangian. After finding the optimal form of <span class="math inline">\(\mathbf{w}\)</span> and <span class="math inline">\(b\)</span> as done before, we find that the dual objective function can be written as</p>
+<p><span class="math display">\[
+\max_{\alpha_1,\dots,\alpha_n}
+\left[
+\sum_{i=1}^n \alpha_i
+- \frac{1}{2}
+\sum_{i=1}^n \sum_{j=1}^n
+\alpha_i \alpha_j y_i y_j x_i^\top x_j
+\right].
+\]</span> This is the <strong>exact same dual objective</strong> function as the maximal margin case. The difference is the stricter constraint <span class="math inline">\(0 \leq \alpha_i \leq C\)</span>. This result becomes highlighted once more in the support vector section below.</p>
+</div>
+</div>
+</div>
 <p>The objective function now has two competing components:</p>
 <ul>
 <li><span class="math inline">\(\frac{1}{2}\lVert w \rVert^2\)</span> wants a wide margin</li>
@@ -360,7 +403,7 @@ y_i(\mathbf{w}\cdot\mathbf{x}_i + b) \geq 1 - \xi_i, \qquad i = 1,\dots,n
 <h2 data-number="4.3" class="anchored" data-anchor-id="the-cost-parameter"><span class="header-section-number">4.3</span> The Cost Parameter</h2>
 <p>Let us take a closer look at the role of <span class="math inline">\(C\)</span> in the objective function</p>
 <p><span class="math display">\[
-\frac{1}{2}\lVert w \rVert^2 + C \sum_{i=1}^n \xi_i.
+\frac{1}{2}\lVert \mathbf{w} \rVert^2 + C \sum_{i=1}^n \xi_i.
 \]</span></p>
 <p>The first term is from the hard margin case. Recall that the margin width which we want to maximise is proportional to <span class="math display">\[\frac{1}{\lVert w \rVert}.\]</span> Therefore, we can equivalently minimise <span class="math inline">\(\lVert w \rVert^2\)</span>. The second term penalises margin violations and misclassified observations. The cost parameter, <span class="math inline">\(C\)</span>, controls how strongly these violations are penalised relative to the desire for a wide margin.</p>
 <p>A useful way to interpret <span class="math inline">\(C\)</span> is:</p>
@@ -619,7 +662,7 @@ Figure&nbsp;4.4: The fitted soft-margin boundary and margins for cost equal to 1
 <span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  class <span class="sc">~</span> x1 <span class="sc">+</span> x2,</span>
 <span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> dat,</span>
 <span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">kernel =</span> <span class="st">"linear"</span>,</span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">cost =</span> <span class="fu">seq</span>(<span class="fl">0.05</span>, <span class="dv">5</span>, <span class="at">by =</span> <span class="fl">0.05</span>),</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">cost =</span> <span class="fu">seq</span>(<span class="fl">0.05</span>, <span class="dv">3</span>, <span class="at">by =</span> <span class="fl">0.05</span>),</span>
 <span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">tunecontrol =</span> <span class="fu">tune.control</span>(<span class="at">cross =</span> <span class="dv">10</span>)</span>
 <span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>)</span>
 <span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a></span>
@@ -1106,6 +1149,9 @@ Figure&nbsp;4.5: Cross-validation error across candidate cost values. The select
       </a>          
   </div>
   <div class="nav-page nav-page-next">
+      <a href="./appendix-concepts.html" class="pagination-link" aria-label="Some Mathematical Support">
+        <span class="nav-page-text"><span class="chapter-number">A</span>&nbsp; <span class="chapter-title">Some Mathematical Support</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
   </div>
 </nav>
 </div> <!-- /content -->
