@@ -1,0 +1,1341 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.36">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>5&nbsp; Nonlinear SVMs – Support Vector Machines</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./appendix-concepts.html" rel="next">
+<link href="./03-soft-margin.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-845c23b38eaddc0f92fda52bfe77a8c8.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-ec8eff129d6f50c8392963982e963180.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<link href="site_libs/htmltools-fill-0.5.8.1/fill.css" rel="stylesheet">
+
+<script src="site_libs/htmlwidgets-1.6.4/htmlwidgets.js"></script>
+
+<script src="site_libs/plotly-binding-4.12.0/plotly.js"></script>
+
+<script src="site_libs/typedarray-0.1/typedarray.min.js"></script>
+
+<script src="site_libs/jquery-3.5.1/jquery.min.js"></script>
+
+<link href="site_libs/crosstalk-1.2.2/css/crosstalk.min.css" rel="stylesheet">
+
+<script src="site_libs/crosstalk-1.2.2/js/crosstalk.min.js"></script>
+
+<link href="site_libs/plotly-htmlwidgets-css-2.25.2/plotly-htmlwidgets.css" rel="stylesheet">
+
+<script src="site_libs/plotly-main-2.25.2/plotly-latest.min.js"></script>
+
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="nav-sidebar floating quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./04-nonlinear-svm.html"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Nonlinear SVMs</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="./">Support Vector Machines</a> 
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Support Vector Machines</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./01-introduction.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">A Brief Overview</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./02-maximal-margin.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Maximal Margin Classifier</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./03-soft-margin.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Soft Margin Classifier</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./04-nonlinear-svm.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Nonlinear SVMs</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Appendices</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./appendix-concepts.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">A</span>&nbsp; <span class="chapter-title">Some Mathematical Support</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#why-linear-boundaries-are-not-enough" id="toc-why-linear-boundaries-are-not-enough" class="nav-link active" data-scroll-target="#why-linear-boundaries-are-not-enough"><span class="header-section-number">5.1</span> Why Linear Boundaries Are Not Enough</a></li>
+  <li><a href="#feature-expansion" id="toc-feature-expansion" class="nav-link" data-scroll-target="#feature-expansion"><span class="header-section-number">5.2</span> Feature Expansion</a>
+  <ul class="collapse">
+  <li><a href="#squares-but-not-the-shape" id="toc-squares-but-not-the-shape" class="nav-link" data-scroll-target="#squares-but-not-the-shape"><span class="header-section-number">5.2.1</span> Squares, but not the shape</a></li>
+  <li><a href="#a-lifted-perspective" id="toc-a-lifted-perspective" class="nav-link" data-scroll-target="#a-lifted-perspective"><span class="header-section-number">5.2.2</span> A Lifted Perspective</a></li>
+  </ul></li>
+  <li><a href="#why-not-just-keep-adding-features" id="toc-why-not-just-keep-adding-features" class="nav-link" data-scroll-target="#why-not-just-keep-adding-features"><span class="header-section-number">5.3</span> Why Not Just Keep Adding Features?</a></li>
+  <li><a href="#the-kernel-trick" id="toc-the-kernel-trick" class="nav-link" data-scroll-target="#the-kernel-trick"><span class="header-section-number">5.4</span> The Kernel Trick</a></li>
+  <li><a href="#common-kernels" id="toc-common-kernels" class="nav-link" data-scroll-target="#common-kernels"><span class="header-section-number">5.5</span> Common Kernels</a>
+  <ul class="collapse">
+  <li><a href="#linear-kernel" id="toc-linear-kernel" class="nav-link" data-scroll-target="#linear-kernel"><span class="header-section-number">5.5.1</span> Linear kernel</a></li>
+  <li><a href="#polynomial-kernel" id="toc-polynomial-kernel" class="nav-link" data-scroll-target="#polynomial-kernel"><span class="header-section-number">5.5.2</span> Polynomial kernel</a></li>
+  <li><a href="#radial-kernel" id="toc-radial-kernel" class="nav-link" data-scroll-target="#radial-kernel"><span class="header-section-number">5.5.3</span> Radial kernel</a></li>
+  <li><a href="#sigmoid-kernel" id="toc-sigmoid-kernel" class="nav-link" data-scroll-target="#sigmoid-kernel"><span class="header-section-number">5.5.4</span> Sigmoid kernel</a></li>
+  <li><a href="#visualising-different-kernels" id="toc-visualising-different-kernels" class="nav-link" data-scroll-target="#visualising-different-kernels"><span class="header-section-number">5.5.5</span> Visualising Different Kernels</a></li>
+  </ul></li>
+  <li><a href="#the-radials-gamma" id="toc-the-radials-gamma" class="nav-link" data-scroll-target="#the-radials-gamma"><span class="header-section-number">5.6</span> The Radial’s Gamma</a></li>
+  <li><a href="#which-kernel-should-we-use" id="toc-which-kernel-should-we-use" class="nav-link" data-scroll-target="#which-kernel-should-we-use"><span class="header-section-number">5.7</span> Which Kernel Should We Use?</a></li>
+  <li><a href="#r-example-ring-data" id="toc-r-example-ring-data" class="nav-link" data-scroll-target="#r-example-ring-data"><span class="header-section-number">5.8</span> R Example: Ring Data</a>
+  <ul class="collapse">
+  <li><a href="#simulate-and-split-the-data" id="toc-simulate-and-split-the-data" class="nav-link" data-scroll-target="#simulate-and-split-the-data"><span class="header-section-number">5.8.1</span> Simulate and Split the Data</a></li>
+  <li><a href="#linear-kernel-on-the-original-variables" id="toc-linear-kernel-on-the-original-variables" class="nav-link" data-scroll-target="#linear-kernel-on-the-original-variables"><span class="header-section-number">5.8.2</span> Linear Kernel on the Original Variables</a></li>
+  <li><a href="#linear-kernel-after-explicit-feature-expansion" id="toc-linear-kernel-after-explicit-feature-expansion" class="nav-link" data-scroll-target="#linear-kernel-after-explicit-feature-expansion"><span class="header-section-number">5.8.3</span> Linear Kernel After Explicit Feature Expansion</a></li>
+  <li><a href="#radial-kernel-on-the-original-variables" id="toc-radial-kernel-on-the-original-variables" class="nav-link" data-scroll-target="#radial-kernel-on-the-original-variables"><span class="header-section-number">5.8.4</span> Radial Kernel on the Original Variables</a></li>
+  <li><a href="#tune-the-radial-kernel" id="toc-tune-the-radial-kernel" class="nav-link" data-scroll-target="#tune-the-radial-kernel"><span class="header-section-number">5.8.5</span> Tune the Radial Kernel</a></li>
+  </ul></li>
+  <li><a href="#takeaway" id="toc-takeaway" class="nav-link" data-scroll-target="#takeaway"><span class="header-section-number">5.9</span> Takeaway</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Nonlinear SVMs</span></h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<p>The soft-margin classifier lets us keep the SVM idea when the data <span title="If I alternate between is and are, at least I will be right half of the time. Right??">are</span> not perfectly separable. It does this by allowing some observations to violate the margin, or even fall on the wrong side of the boundary, as long as those violations are penalised.</p>
+<p>However, this still assumes that a <strong>linear boundary</strong> is a reasonable starting point. In some problems, linearity is the main issue. The classes may be well structured, but the structure may require a curved boundary rather than a line, plane, or hyperplane in the original predictor space.</p>
+<p>This does not mean that we need to abandon the SVM machinery. Instead, we extend the idea:</p>
+<ul>
+<li>keep the margin based classifier</li>
+<li>keep the support vector representation</li>
+<li>allow the boundary to be linear in a richer feature space</li>
+</ul>
+<p>That final point is the key idea behind nonlinear SVMs.</p>
+<section id="why-linear-boundaries-are-not-enough" class="level2" data-number="5.1">
+<h2 data-number="5.1" class="anchored" data-anchor-id="why-linear-boundaries-are-not-enough"><span class="header-section-number">5.1</span> Why Linear Boundaries Are Not Enough</h2>
+<p>Consider a classification problem where one class sits near the centre and the other class forms a ring around it. No matter how hard you try, a straight line cannot separate the centre class from the outer ring in a natural way. The problem is neither that the data are noisy, nor that the classes overlap. The problem is that the boundary shape is wrong.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-ring" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-ring-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="04-nonlinear-svm_files/figure-html/fig-ring-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-ring-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;5.1: In the original two-dimensional predictor space, a ring-shaped class structure cannot be separated naturally with a straight line.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>The linear SVM is still doing what we asked it to do. It tries to find a boundary of the form</p>
+<p><span class="math display">\[
+\mathbf{w}\cdot\mathbf{x} + b = 0.
+\]</span></p>
+<p>If the useful boundary is nonlinear, then no amount of tuning the cost parameter can fix the problem. The cost parameter controls how tolerant the classifier is towards violations; it does not change the basic class of boundary from linear to nonlinear.</p>
+<p>Therefore, need a source of boundary flexibility, not just a softening of constraints.</p>
+</section>
+<section id="feature-expansion" class="level2" data-number="5.2">
+<h2 data-number="5.2" class="anchored" data-anchor-id="feature-expansion"><span class="header-section-number">5.2</span> Feature Expansion</h2>
+<p>The natural way to create nonlinear boundaries is to expand the predictor space. Recall the 3D example in <a href="02-maximal-margin.html#sec-3dHard" class="quarto-xref"><span>Section 3.5</span></a>. In the 2D projection of the data, the classes are inseparable. In fact, they are almost random. However, when the predictor space considers the third dimension, the classes are easily separable with a linear plane. Expanding the dimensionality provided a richer and more valuable feature space for the classifier. Admittedly, this was by design; but, the idea remains the same:</p>
+<blockquote class="blockquote">
+<p>“inseparable in <span class="math inline">\(p\)</span> dimensions” is a statement about the <em>features you have</em>, not about the data.</p>
+</blockquote>
+<p>In reality, we are <em>very</em> unlikely to have a magic predictor just lying around for us; but, we could create new predictors through transformations.</p>
+<p>For example, imagine we had a 1D predictor space. Instead of just using the original predictor <span class="math inline">\(x\)</span>, we might <strong>also</strong> use:</p>
+<p><span class="math display">\[
+x^2, \qquad x^3.
+\]</span> Or, if we had a 2D predictor space, then we could consider interactions with <span class="math display">\[
+x_1x_2.
+\]</span> We can then use our SVM mechanics on this expanded feature space. The SVM model will still be <strong>linear in the extended feature space</strong>; yet, <strong>nonlinear in the original</strong> predictor space.</p>
+<p>Let <span class="math inline">\(\phi(\mathbf{x})\)</span> denote a transformation of the original predictor vector into a new feature space. The classifier can then be written as</p>
+<p><span class="math display">\[
+f(\mathbf{x}) = \mathbf{w}\cdot\phi(\mathbf{x}) + b.
+\]</span></p>
+<p>This is still a linear classifier, but it is linear in <span class="math inline">\(\phi(\mathbf{x})\)</span> rather than in <span class="math inline">\(\mathbf{x}\)</span>.</p>
+<section id="squares-but-not-the-shape" class="level3" data-number="5.2.1">
+<h3 data-number="5.2.1" class="anchored" data-anchor-id="squares-but-not-the-shape"><span class="header-section-number">5.2.1</span> Squares, but not the shape</h3>
+<p>Consider the following 1D example. We can see that the blue inner class is cleanly separated from the surrounding outer orange group. For this reason, we should be able to create a classification model which easily handles this data, just use two thresholds to separate the data. A naive SVM approach cannot do this.</p>
+<p>Define the transformation function <span class="math inline">\(\phi: \mathbb{R} \rightarrow \mathbb{R}\)</span> such that <span class="math display">\[
+\phi(x) = x^2.
+\]</span> The classes in the squared feature space of <span class="math inline">\(\phi\)</span> then separates the blue group to the left and orange group to the right, a perfectly linear separable problem here. Therefore, we can have an SVM friendly decision rule. That is</p>
+<p><span class="math display">\[
+\text{class}(x^2) =
+\begin{cases}
+\text{outer}, &amp; x^2 &gt; 1.765,\\
+\text{inner}, &amp; x^2 \leq 1.765.\\
+\end{cases}
+\]</span></p>
+<div class="cell">
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="04-nonlinear-svm_files/figure-html/one-dimensional-feature-expansion-1.png" class="img-fluid figure-img" width="672"></p>
+<figcaption>A one-dimensional problem that cannot be separated by one threshold can become separable after mapping from <span class="math inline">\(x\)</span> to <span class="math inline">\(x^2\)</span>.</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>The decision rule in the original space is not a single threshold though, it is given by</p>
+<p><span class="math display">\[
+\text{class}(x) =
+\begin{cases}
+\text{outer}, &amp; x &lt; -\sqrt{1.765},\\
+\text{inner}, &amp; -\sqrt{1.5} \leq x \leq \sqrt{1.765},\\
+\text{outer}, &amp; x &gt; \sqrt{1.765}.
+\end{cases}
+\]</span></p>
+<p>That is, a linear split after transforming <span class="math inline">\(x\)</span> into <span class="math inline">\(x^2\)</span> becomes a nonlinear prediction boundary when viewed back on the original <span class="math inline">\(x\)</span> scale.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="04-nonlinear-svm_files/figure-html/one-dimensional-feature-expansion-predictions-1.png" class="img-fluid figure-img" width="672"></p>
+<figcaption>The transformed-space threshold maps back to two cut points in the original predictor space, producing an inner prediction region between two outer prediction regions.</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>In this sense, nonlinear SVMs do not represent a completely new model or machinery; they just apply the same linear machinery to a transformed feature space. It is the inverse transformation of this machinery back to into the original space that produces nonlinear boundaries.</p>
+</section>
+<section id="a-lifted-perspective" class="level3" data-number="5.2.2">
+<h3 data-number="5.2.2" class="anchored" data-anchor-id="a-lifted-perspective"><span class="header-section-number">5.2.2</span> A Lifted Perspective</h3>
+<p>Let us reconsider the ring example illustrated by <a href="#fig-ring" class="quarto-xref">Figure&nbsp;<span>5.1</span></a>. In the original <span class="math inline">\((x_1,x_2)\)</span> space, the inner and outer classes are arranged in concentric rings. A natural additional feature is the squared distance from the origin:</p>
+<p><span class="math display">\[
+r^2 = x_1^2 + x_2^2.
+\]</span></p>
+<p>Points close to the centre have small values of <span class="math inline">\(r^2\)</span>, whilst points in the outer ring have larger values of <span class="math inline">\(r^2\)</span>. This is clearly a rich feature to have in the predictor set. We have two options:</p>
+<ol type="1">
+<li>Isolate the transformation such that <span class="math inline">\(\phi(\mathbf{x}) = x_1^2 + x_2^2\)</span> since we can classify the data based purely on the radii.</li>
+<li>Add the transformation as an additional predictor to the existing 2D space.</li>
+</ol>
+<p>Given that we have just done a 1D classification problem above, let us choose option two, <em>just for fun!</em></p>
+<p>Define <span class="math inline">\(\phi: \mathbb{R}^2 \rightarrow \mathbb{R}^3\)</span> such that</p>
+<p><span class="math display">\[
+\phi(\mathbf{x}) =
+\left[x_1,\;x_2,\;x_1^2 + x_2^2\right].
+\]</span> We now want to use SVMs to find a linear boundary on this space, a <span class="math inline">\(\mathbf{w}\)</span> and <span class="math inline">\(b\)</span> for <span class="math display">\[
+\mathbf{w}\cdot \phi(\mathbf{x}) + b = 0
+\]</span> If we analyse the expanded feature space in <a href="#fig-liftRing" class="quarto-xref">Figure&nbsp;<span>5.2</span></a> below, we can try and eyeball a linear boundary. <em>Eyeballing is good for intuition, not optimality.</em></p>
+<div class="cell">
+<div id="fig-liftRing" class="cell-output-display quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-liftRing-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="plotly html-widget html-fill-item" id="htmlwidget-a1426403344f012cadb9" style="width:100%;height:464px;"></div>
+<script type="application/json" data-for="htmlwidget-a1426403344f012cadb9">{"x":{"visdat":{"4914377d70ae":["function () ","plotlyVisDat"],"49145dc01e0a":["function () ","data"],"4914125e72bc":["function () ","data"]},"cur_data":"4914125e72bc","attrs":{"49145dc01e0a":{"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"x":{},"y":{},"z":{},"type":"scatter3d","mode":"markers","marker":{"color":"#005AB5","size":4,"opacity":0.84999999999999998},"name":"inner","hovertemplate":"class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","inherit":true},"4914125e72bc":{"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"x":{},"y":{},"z":{},"type":"scatter3d","mode":"markers","marker":{"color":"#DC3220","size":4,"opacity":0.84999999999999998},"name":"outer","hovertemplate":"class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","inherit":true},"4914125e72bc.1":{"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"z":[[2,2],[2,2]],"type":"surface","x":[-2.3876871581048853,2.1953767877853534],"y":[-2.3921299546280554,2.2957720448622334],"showscale":false,"opacity":0.34999999999999998,"colorscale":[["0","#BFD7FF"],["1","#BFD7FF"]],"name":"x1^2 + x2^2 = 2 separating plane","hoverinfo":"skip","inherit":true}},"layout":{"margin":{"b":40,"l":60,"t":25,"r":10},"title":"Lift the ring: a plane separates the classes","scene":{"xaxis":{"title":"x1"},"yaxis":{"title":"x2"},"zaxis":{"title":"x1^2 + x2^2"},"camera":{"eye":{"x":1.5,"y":-1.7,"z":1.2}},"annotations":[{"x":-0.096155185159765955,"y":-0.048178954882911018,"z":2,"text":"x1^2 + x2^2 = 2","showarrow":false}]},"legend":{"orientation":"h","x":0.29999999999999999,"y":1.02},"hovermode":"closest","showlegend":true},"source":"A","config":{"modeBarButtonsToAdd":["hoverclosest","hovercompare"],"showSendToCloud":false},"data":[{"x":[0.69199125022222874,-0.71161069203726135,0.55315541176790883,0.71940643241151536,0.22522635165156152,0.23613062429086651,-0.42858617301686386,0.79004397994364706,0.37205208676613877,-0.83715014731645754,0.35274377332224938,0.065210709751913121,0.089904528386434437,0.51509359980867853,-0.71903968370859861,0.82022175057974334,-0.79421644269502489,0.84832315890643062,0.81570119027396293,-0.25729328821763087,-0.55796205008390265,-0.13483075745065715,0.67662833236314313,0.62948648031828736,0.78594454363712107,0.77443325151794218,-0.51138966251253082,-0.80491440309355622,0.69282950977999813,-0.49379288916024505,-0.46896345623549901,0.010424661606399502,0.39627777340348758,0.38426911790900059,-0.57114309694609466,0.42394582342045961,-0.76322745323547092,0.25340533335847598,0.47104460302208662,-0.8419867310106407,0.36821776269506334,-0.6891582606426363,0.13700930432845609,-0.65908075170288494,0.68379244530111538,-0.46288415454005094,0.82032433637369861,0.37873050241075557,0.62847365518222587,0.84067578975139889,-0.5944993853926609,-0.10898624202812132,0.12313801038824186,-0.67319213667371425,-0.053586944674226755,-0.65360352788639897,0.48174471953984854,0.37670155716234938,-0.59093026143885241,-0.028903981332390444],"y":[-0.11627078418245465,0.51496661776346653,0.60494998821554924,0.36106065979860585,0.87998634463545566,-0.88920630096914255,0.60531150114232435,-0.12649080805176663,0.70734917213704773,0.24190160246365966,0.69950337284481245,0.72347385611369153,-0.75292098476861014,0.48230232426835423,0.14284077117096816,0.37748197406994238,-0.20982499665686,-0.028803076328811836,-0.088193807437622354,0.78531255065518568,-0.67846430873903385,0.64059802102682506,0.077859992741805481,-0.34760593326928546,-0.057428755192096489,0.34833637157736341,-0.56535005433511698,0.048392560840599647,-0.085434097838013215,0.69261004743376287,-0.74939461790623785,0.82284080056908926,0.79042640826065835,0.76010873609832608,0.39701414661045753,-0.84308852690115965,0.04829931611383799,-0.67984688488769107,-0.78299032174493444,0.26324909747123393,-0.74117192966532242,0.59870441232926452,-0.69258539959637833,0.3212802916052947,-0.50079662567902794,0.90025632144125656,0.58283759503416754,-0.64081671082286118,-0.49167386465876478,-0.12917885445572719,-0.39815500296532114,-0.70145269522420484,-0.75655532747677756,-0.72100907010974447,-0.84386471612434655,0.36756358241380438,0.77964844221042073,0.71625987749979614,0.41742162804652533,0.78282095817368524],"z":[0.4923707856385261,0.77158039443249427,0.67194539781011797,0.64791041504926883,0.82510287622314382,0.84644551741121976,0.55008812111641525,0.64016941476678657,0.63876560659000514,0.75933675442645299,0.6137331382388872,0.52766685714636263,0.57497283352932083,0.49793694855851978,0.5374215526564784,0.81525636087183928,0.6748062870691911,0.72048179914298849,0.67314657948470435,0.68291563837839442,0.77163546756656654,0.42854515769820251,0.46388807862628206,0.51708311374751648,0.62100688759587619,0.72108508882033528,0.58114007086139985,0.6502290362521671,0.48731171469538775,0.72354009519142126,0.78151901663118106,0.67717565665078772,0.78180998056947082,0.72542804567155617,0.48382466979800598,0.89052832538801885,0.58484896930936736,0.5264060498660178,0.83495686198247121,0.77824174251740419,0.68492015008797558,0.83338608155451377,0.49844608520664252,0.53760846303922305,0.71836936854237932,1.0247231848192009,1.0126316790321614,0.5540828503261338,0.63672232444659271,0.72342295991263217,0.51195692561856643,0.50391388458871345,0.58753893313586891,0.97304173205983924,0.71497921975914269,0.56230055878241636,0.83992966824566306,0.65493227528456177,0.52343938944520219,0.61364409269282982],"type":"scatter3d","mode":"markers","marker":{"color":"#005AB5","size":4,"opacity":0.84999999999999998,"line":{"color":"rgba(31,119,180,1)"}},"name":"inner","hovertemplate":["class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: inner<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>"],"error_y":{"color":"rgba(31,119,180,1)"},"error_x":{"color":"rgba(31,119,180,1)"},"line":{"color":"rgba(31,119,180,1)"},"frame":null},{"x":[0.7566321458455465,-2.1051148979196266,0.16690619117953998,-0.76291278496525172,-1.8465787822750592,-0.83851928128787534,-1.858018440010003,-1.9899344930832821,-0.96824114827326457,-1.6333250161021757,-0.60214766360334648,-1.6823084842485612,1.1259895982050356,-1.6186134292884422,1.4747440138433681,-1.8197936365531562,-2.0694861016861594,-1.9298928575742063,-1.4954278415184667,1.7153715181562375,1.7078749028839872,1.4288481244018525,0.11126159722652706,-0.23156896245439856,-1.5754561731596306,1.7353954510817931,1.5029980934749003,0.26686460858301464,-1.097352423691244,-1.7997324217141661,-0.96487288881559685,1.9953767877853534,1.6041634263702158,0.77820690650499003,-0.56770526156839285,-1.6823748860380956,-1.9987270571018985,-1.2235445073042681,0.86648557260564418,0.9638485487333196,-1.7676424021825248,-1.9944895821727078,-1.996685696143826,-1.5172057020198613,-1.295212079208913,-1.1606458737837693,1.9430399369925311,1.8117251923623268,0.37884361667340116,0.52839299772610671,-0.5617423725375098,-1.662460933114863,1.8573167184572967,-0.39198613976466357,-1.3188130917453942,-1.554002165580481,-2.1876871581048851,0.32833329628365693,0.77293751783804965,0.94689435934963384,-2.0358882548397919,-2.0497470223281558,-1.63332441571408,0.35744749701874157,-0.5191996501487004,-0.95639715380279977,-0.066219312059896882,1.3988452188323341,-1.2874112159795081,1.6646000256885731,1.3916095104418682,0.2840407992468123,0.36868904787773099,-2.1072068777356971,1.5806565726458011,-1.0007179116316902,1.6283999709199615,0.70778038869606108,-0.027084398201549273,0.70083466923572524,-0.69693996703043681,-1.8821952976223317,0.96204267993293091,-1.6765672193702186,-0.089048784212622467,-0.13384356156329952,0.78554996205348693,1.6009790193149023,1.8291877105474748,1.9742083805002291],"y":[1.8068823376745857,-0.037069581402821308,-1.9393977299301595,-1.8955174562444772,-0.42993830744909378,-1.7630339022706432,0.58705476382445609,0.099947936162069262,1.7067698331611731,0.68944707581048159,1.9483433102081977,-1.2172935127515634,-1.793970135910725,-1.6375227405257156,1.4185647694189265,-0.76254401892160217,0.66296134976343801,0.76640906142844334,-1.4484633464703152,-0.87131487132239538,-1.4290872452126908,-1.1738619424590828,1.9670951193903883,-2.1139635193116684,1.4307456849012687,1.0687629727312236,1.2733124028151519,-1.7810273815094215,1.3114670772176804,1.078094631755258,1.8026121691166797,0.15286723391222945,-1.1976735613447003,1.7784967962204152,-2.1467316452361302,-1.0047046827486912,-0.57669347787285741,1.8522678663514673,-1.7766422802316966,1.9332383870484477,1.1385408813068238,0.19131280494540212,-0.032565503887759938,1.1879976226419493,-1.6369120865332165,1.7411795174410678,-0.57947542247822481,0.63880387563701846,-1.9667774694761788,1.9100289718718335,-1.9432667948467748,1.0770887460387431,0.83701302560807789,-1.9790722638126637,-1.2749461076664792,-1.5600252614883567,-0.93732985063929886,-2.1354562444246312,1.6369450462976258,-1.8364970021676361,-0.24901061469157718,0.48426958959247612,-0.7531480995960832,1.9818414813044276,-1.8594228430290127,1.8621879945900486,-2.0046934053978891,1.5283517874614279,-1.3194013374341156,1.2200454635924236,-1.5318776796738665,-2.0289626718499068,-2.1921299546280553,-0.17811913573931953,-1.1357187329605929,-1.6478602184426017,-1.4900061650504508,-1.8685623256508181,-1.9897847021363635,-1.7943956218514867,-1.8074499452705814,-0.13100861097919525,1.8765043097160892,-0.51488848942553256,2.0957720448622332,-2.1509604265150686,1.9924996362770377,-0.85827021679148696,0.58904736500110388,-0.31248072892296003],"z":[3.8373159863272122,4.4328828873085397,3.7891212315123171,4.1750223443909702,3.5947001473606317,3.8114031256471868,3.796865819146193,3.9698288767056757,3.8505541845985487,3.1430878785687968,4.1586234632160064,4.3119653323617317,4.4861814238054825,5.3013901592117403,4.1871959114034203,3.8931222604324693,4.7222904763523363,4.3118692911555634,4.3343504952565644,3.7016890502891973,4.9591270383305863,3.4195588225605027,3.8818423517468839,4.5224659453527813,4.5290953684103883,4.1538516635166616,3.8803277441520807,3.2432752530004723,2.9241282364069328,4.4013248247886425,4.1803903238188962,4.0048969164365715,4.0077622580479284,3.7686568434983476,4.9307460206706599,3.8398167567088435,4.3274852162123079,4.9279574100726613,3.9072550394406136,4.6664146860530105,4.4208350004005261,4.0145892827315395,3.9878142812288186,3.7132514936445036,4.3570555091672043,4.378804956287599,4.1111959620042562,3.6904185641691853,4.0117361003333043,3.927409833435755,4.0918403290581278,3.9238965209764531,4.1502161976985699,4.0703801591601838,3.3647555484129512,4.8486015471106407,5.6645623506365181,4.6679761253006422,3.2770214910799815,4.2693301667388681,4.2068472724236905,4.4359798909472063,3.2349807068929328,4.0554643701438913,3.7270215858926292,4.3824396429974035,4.0231806469354714,4.2926271324866221,3.3982475282527687,4.25940417875485,4.2832262550352453,4.1973686993970807,4.9413653520025873,4.472047252093148,3.7883322410459845,3.7168796381861906,4.8718048371804823,3.9924782434643418,3.959976725481837,3.7110248813225319,3.7526006223030142,3.5598223945423157,4.4467945423955921,3.0759877976096934,4.4001901499957734,4.6445448554058348,4.5871435434463628,3.2997615853178122,3.6929044786326561,3.9951429355855619],"type":"scatter3d","mode":"markers","marker":{"color":"#DC3220","size":4,"opacity":0.84999999999999998,"line":{"color":"rgba(255,127,14,1)"}},"name":"outer","hovertemplate":["class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>","class: outer<br>x1: %{x:.2f}<br>x2: %{y:.2f}<br>x1^2 + x2^2: %{z:.2f}<extra><\/extra>"],"error_y":{"color":"rgba(255,127,14,1)"},"error_x":{"color":"rgba(255,127,14,1)"},"line":{"color":"rgba(255,127,14,1)"},"frame":null},{"colorbar":{"title":"r2<br />r2","ticklen":2},"colorscale":[["0","#BFD7FF"],["1","#BFD7FF"]],"showscale":false,"z":[[2,2],[2,2]],"type":"surface","x":[-2.3876871581048853,2.1953767877853534],"y":[-2.3921299546280554,2.2957720448622334],"opacity":0.34999999999999998,"name":"x1^2 + x2^2 = 2 separating plane","hoverinfo":"skip","frame":null}],"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.20000000000000001,"selected":{"opacity":1},"debounce":0},"shinyEvents":["plotly_hover","plotly_click","plotly_selected","plotly_relayout","plotly_brushed","plotly_brushing","plotly_clickannotation","plotly_doubleclick","plotly_deselect","plotly_afterplot","plotly_sunburstclick"],"base_url":"https://plot.ly"},"evals":[],"jsHooks":[]}</script>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-liftRing-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;5.2: A nonlinear pattern can become linearly separable in another feature space.
+</figcaption>
+</figure>
+</div>
+</div>
+<p><em>As expected</em>, the classes can be separated by a plane along the new feature, <span class="math inline">\(r^2\)</span>. As a result, we could define our boundary by</p>
+<p><span class="math display">\[
+x_1^2 + x_2^2 - 2 = 0.
+\]</span></p>
+<p>When we project this boundary back into the original <span class="math inline">\((x_1,x_2)\)</span> space, it becomes a circular boundary.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-ringBound" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-ringBound-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="04-nonlinear-svm_files/figure-html/fig-ringBound-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-ringBound-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;5.3: A nonlinear pattern can become linearly separable in another feature space.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>This shows that we could have chosen a different <span class="math inline">\(\phi\)</span> and arrived at the same result. Explicitly, we could have chosen: <span class="math display">\[
+\phi(\mathbf{x}) = [x_1^2, x_2^2]
+\]</span> with <span class="math inline">\(\mathbf{w} = [1, 1]\)</span>.</p>
+<p>This provides us another way to view the SVM boundary.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="04-nonlinear-svm_files/figure-html/ring-transformed-space-1.png" class="img-fluid figure-img" width="672"></p>
+<figcaption>Another perspective of the ring boundary.</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>This is fun. When you face a separable problem, just endlessly add more features, right?</p>
+</section>
+</section>
+<section id="why-not-just-keep-adding-features" class="level2" data-number="5.3">
+<h2 data-number="5.3" class="anchored" data-anchor-id="why-not-just-keep-adding-features"><span class="header-section-number">5.3</span> Why Not Just Keep Adding Features?</h2>
+<p>In theory, we could manually consider expansive feature set transformations by adding many polynomial terms and interactions. <em>Sometimes</em> this is perfectly reasonable. In fact, explicitly adding useful features is often a good modelling habit; however, this approach becomes unsustainable quickly:</p>
+<ul>
+<li>the number of transformed features can grow very fast</li>
+<li>many transformed variables may be difficult to interpret</li>
+<li>some transformations are not obvious in advance</li>
+<li>computation can become expensive in high dimensions</li>
+</ul>
+<p>The SVM has a useful structure which comes to the rescue. The optimal classifier can be expressed in a way that depends on the observations through dot products only. But why does this matter? <em>The Kernel Trick.</em></p>
+</section>
+<section id="the-kernel-trick" class="level2" data-number="5.4">
+<h2 data-number="5.4" class="anchored" data-anchor-id="the-kernel-trick"><span class="header-section-number">5.4</span> The Kernel Trick</h2>
+<p>Recall from the maximal margin and soft margin chapters that the optimal SVM boundary is determined by the support vectors. In the dual representation, the boundary has the form <span class="math display">\[
+\mathbf{w} = \sum_{i=1}^n \alpha_i y_i \mathbf{x}_i,
+\]</span> for both margin cases. This implies that the linear boundary can be expressed from the observations such that:</p>
+<p><span class="math display">\[
+f(\mathbf{x})
+= \sum_{i=1}^{n}\alpha_i y_i\,\mathbf{x}_i\cdot\mathbf{x} + b.
+\]</span></p>
+<p>Remember that only the support vectors, the observations corresponding to <span class="math inline">\(\alpha_i &gt; 0\)</span>, contribute to this sum.</p>
+<p>Now, what happens when we transform the feature space with <span class="math inline">\(\phi\)</span> for the SVM. Then we have the same idea that</p>
+<p><span class="math display">\[
+f(\mathbf{x})
+= \sum_{i=1}^{n}\alpha_i y_i
+\phi(\mathbf{x}_i)\cdot\phi(\mathbf{x}) +b,
+\]</span> depends on the transformed observations only through the dot product <span class="math inline">\(\phi(\mathbf{x}_i)\cdot\phi(\mathbf{x}).\)</span></p>
+<p>A <strong>kernel function</strong> is a shortcut for this calculation:</p>
+<p><span class="math display">\[
+K(\mathbf{x}_i,\mathbf{x}_j)
+=
+\phi(\mathbf{x}_i)\cdot\phi(\mathbf{x}_j).
+\]</span></p>
+<p>Therefore, the classifier can be written as</p>
+<p><span class="math display">\[
+f(\mathbf{x})
+= \sum_{i=1}^{n}\alpha_i y_i K(\mathbf{x}_i,\mathbf{x}) + b.
+\]</span></p>
+<p>This is the kernel trick, the ability to just substitute <span class="math inline">\(K(\mathbf{x}_i,\mathbf{x}_j)\)</span> instead of <span class="math inline">\(\mathbf{x}_i\cdot\mathbf{x}_j\)</span>. This lets the SVM behave as if it is working in a richer feature space, without explicitly constructing all of the transformed features. In a way, we were always using an identity kernel. Now we want to be more interesting.</p>
+<div class="callout callout-style-simple callout-note no-icon callout-titled">
+<div class="callout-header d-flex align-content-center collapsed" data-bs-toggle="collapse" data-bs-target=".callout-1-contents" aria-controls="callout-1" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon no-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Note</span>A little more about the kernel trick
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-1" class="callout-1-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>For the linear classifier, the dual form only needs dot products between observations. If we want to work with transformed predictors, the dual form only needs dot products between the transformed observations:</p>
+<p><span class="math display">\[
+\phi(\mathbf{x}_i)\cdot\phi(\mathbf{x}_j).
+\]</span></p>
+<p>If a function <span class="math inline">\(K\)</span> can compute this value directly, then the optimisation can be carried out using <span class="math inline">\(K(\mathbf{x}_i,\mathbf{x}_j)\)</span> without first constructing, <em>the potentially strenuous</em>, <span class="math inline">\(\phi(\mathbf{x}_i)\)</span> and <span class="math inline">\(\phi(\mathbf{x}_j)\)</span>.</p>
+<p>The SVM is not avoiding the transformed feature space conceptually. The trick is that it is avoiding the need to construct that space explicitly.</p>
+</div>
+</div>
+</div>
+</section>
+<section id="common-kernels" class="level2" data-number="5.5">
+<h2 data-number="5.5" class="anchored" data-anchor-id="common-kernels"><span class="header-section-number">5.5</span> Common Kernels</h2>
+<p>Several kernel choices are well known and available in <code>svm</code>. Each one defines a different way of measuring similarity between observations, and therefore a different type of boundary that the SVM can represent.</p>
+<section id="linear-kernel" class="level3" data-number="5.5.1">
+<h3 data-number="5.5.1" class="anchored" data-anchor-id="linear-kernel"><span class="header-section-number">5.5.1</span> Linear kernel</h3>
+<p>The one we have been using implicitly… until now.</p>
+<p><span class="math display">\[
+K(\mathbf{x}_i,\mathbf{x}_j)
+=
+\mathbf{x}_i\cdot\mathbf{x}_j.
+\]</span> The linear kernel gives the ordinary support vector classifier. It is appropriate when a linear boundary is plausible, and it is usually the simplest baseline to fit first.</p>
+</section>
+<section id="polynomial-kernel" class="level3" data-number="5.5.2">
+<h3 data-number="5.5.2" class="anchored" data-anchor-id="polynomial-kernel"><span class="header-section-number">5.5.2</span> Polynomial kernel</h3>
+<p><span class="math display">\[
+K(\mathbf{x}_i,\mathbf{x}_j)
+=
+\left(c + \gamma\mathbf{x}_i\cdot\mathbf{x}_j\right)^d.
+\]</span></p>
+<p>The polynomial kernel can capture curved boundaries through polynomial interactions. The degree <span class="math inline">\(d\)</span> controls the complexity of the polynomial structure. A low degree gives a modest amount of curvature; a high degree can become much more flexible; <em>and even easier to overfit</em>.</p>
+</section>
+<section id="radial-kernel" class="level3" data-number="5.5.3">
+<h3 data-number="5.5.3" class="anchored" data-anchor-id="radial-kernel"><span class="header-section-number">5.5.3</span> Radial kernel</h3>
+<p><span class="math display">\[
+K(\mathbf{x}_i,\mathbf{x}_j)
+=
+\exp\left(-\gamma \lVert \mathbf{x}_i - \mathbf{x}_j\rVert^2\right).
+\]</span></p>
+<p>The radial kernel is a common practical choice because it can produce flexible local boundaries. It measures similarity by distance: observations that are close together have high similarity, while observations far apart have low similarity.</p>
+</section>
+<section id="sigmoid-kernel" class="level3" data-number="5.5.4">
+<h3 data-number="5.5.4" class="anchored" data-anchor-id="sigmoid-kernel"><span class="header-section-number">5.5.4</span> Sigmoid kernel</h3>
+<p><span class="math display">\[
+K(\mathbf{x}_i,\mathbf{x}_j)
+=
+\tanh\left(\gamma \mathbf{x}_i\cdot\mathbf{x}_j + c\right).
+\]</span></p>
+<p>The sigmoid kernel is related to neural network style activation functions. It exists in the SVM framework, but it mimics the idea of a two layer neural network making its use specialised.</p>
+</section>
+<section id="visualising-different-kernels" class="level3" data-number="5.5.5">
+<h3 data-number="5.5.5" class="anchored" data-anchor-id="visualising-different-kernels"><span class="header-section-number">5.5.5</span> Visualising Different Kernels</h3>
+<p>The easiest way to see what the kernels are doing is to fit them to the same data and compare their prediction regions.</p>
+<p>In <a href="#fig-kernelCompare" class="quarto-xref">Figure&nbsp;<span>5.4</span></a> below, each panel uses the same observations simulated from trigonometric functions and the same SVM machinery. The only change is the kernel. The shaded regions show the predicted class across the predictor space, clearly illustrating the the boundary shape.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-kernelCompare" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-kernelCompare-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="04-nonlinear-svm_files/figure-html/fig-kernelCompare-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-kernelCompare-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;5.4: The same nonlinear data fitted with different SVM kernels. The kernel changes the type of boundary the SVM can express.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>Obviously, the linear kernel is restricted to a straight boundary. The polynomial and radial kernels can create curved boundaries that better follow the two bands. The sigmoid kernel is also nonlinear, but its use case is more for its relationship to neural networks rather than its SVM performance.</p>
+<p>An important note here is that this is an isolated look at these boundary shapes. <strong>These shapes can change DRASTICALLY</strong> depending on:</p>
+<ol type="1">
+<li>the structure of the data classes,</li>
+<li>the kernel parameters.</li>
+</ol>
+</section>
+</section>
+<section id="the-radials-gamma" class="level2" data-number="5.6">
+<h2 data-number="5.6" class="anchored" data-anchor-id="the-radials-gamma"><span class="header-section-number">5.6</span> The Radial’s Gamma</h2>
+<p>The radial kernel includes the parameter <span class="math inline">\(\gamma\)</span>:</p>
+<p><span class="math display">\[
+K(\mathbf{x}_i,\mathbf{x}_j)
+=
+\exp\left(-\gamma \lVert \mathbf{x}_i - \mathbf{x}_j\rVert^2\right).
+\]</span></p>
+<p>This parameter controls how quickly similarity decreases as points move away from each other.</p>
+<ul>
+<li>Large <span class="math inline">\(\gamma\)</span>: similarity decays quickly, so each observation has a more local influence. This gives a more flexible boundary.</li>
+<li>Small <span class="math inline">\(\gamma\)</span>: similarity decays slowly, so observations influence a wider region. This gives a smoother boundary.</li>
+</ul>
+<div class="cell">
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="04-nonlinear-svm_files/figure-html/kernel-similarity-visual-1.png" class="img-fluid figure-img" width="672"></p>
+<figcaption>Larger gamma makes similarity decay much faster, making more flexible boundary.</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>The cost parameter and gamma therefore control different parts of the model:</p>
+<ul>
+<li><code>cost</code> controls how strongly margin violations are penalised</li>
+<li><code>gamma</code> controls how local or smooth the radial similarity rule is</li>
+</ul>
+<p>For this reason, radial SVM tuning usually considers both <code>cost</code> and <code>gamma</code>.</p>
+</section>
+<section id="which-kernel-should-we-use" class="level2" data-number="5.7">
+<h2 data-number="5.7" class="anchored" data-anchor-id="which-kernel-should-we-use"><span class="header-section-number">5.7</span> Which Kernel Should We Use?</h2>
+<p>There is no universal best kernel. The choice depends on the structure of the problem.</p>
+<p>A useful practical sequence is:</p>
+<ol type="1">
+<li>Fit a linear kernel first as a baseline.</li>
+<li>If the linear boundary is clearly too restrictive, consider a nonlinear kernel.</li>
+<li>Use cross-validation to compare tuning choices.</li>
+<li>Interpret the fitted boundary where the feature dimension allows it.</li>
+</ol>
+<p>Kernel choice should therefore be treated as a modelling decision, not as a purely mathematical preference. The kernel needs to match the type of structure that the model is expected to learn.</p>
+</section>
+<section id="r-example-ring-data" class="level2" data-number="5.8">
+<h2 data-number="5.8" class="anchored" data-anchor-id="r-example-ring-data"><span class="header-section-number">5.8</span> R Example: Ring Data</h2>
+<p>Let us now use the ring example to compare three routes:</p>
+<ol type="1">
+<li>a linear kernel on the original variables</li>
+<li>a linear kernel after explicit feature expansion</li>
+<li>a radial kernel on the original variables</li>
+</ol>
+<p>This sequence is useful because it shows why the kernel idea is needed. We first see that the original predictors are not enough for a linear boundary. We then show that a simple transformation helps. Finally, we use a kernel to get nonlinear behaviour without manually building the transformed representation.</p>
+<section id="simulate-and-split-the-data" class="level3" data-number="5.8.1">
+<h3 data-number="5.8.1" class="anchored" data-anchor-id="simulate-and-split-the-data"><span class="header-section-number">5.8.1</span> Simulate and Split the Data</h3>
+<p>The training data have an inner class and an outer class. The structure is visually clear, but it is not linearly separable in the two original coordinates.</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Show data setup code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(e1071)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">load</span>(<span class="st">"Data/ring.RData"</span>)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>data<span class="sc">$</span>y <span class="ot">&lt;-</span> <span class="fu">as.factor</span>(data<span class="sc">$</span>y)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co"># 80% training, 20% test</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>ntrain <span class="ot">=</span> <span class="fu">round</span>(<span class="fu">dim</span>(data)[<span class="dv">1</span>]<span class="sc">*</span>.<span class="dv">8</span>)</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">2</span>)</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>tindex <span class="ot">=</span> <span class="fu">sample</span>(<span class="fu">dim</span>(data)[<span class="dv">1</span>], ntrain)</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>traindf <span class="ot">=</span> data[tindex,]</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>testdf <span class="ot">=</span> data[<span class="sc">-</span>tindex,]</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>p <span class="ot">=</span> <span class="fu">ggplot</span>(<span class="at">data =</span> traindf, <span class="fu">aes</span>(<span class="at">x =</span> X1, <span class="at">y =</span> X2))<span class="sc">+</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="fu">aes</span>(<span class="at">color =</span> <span class="fu">as.factor</span>(y)), <span class="at">size=</span><span class="dv">3</span>, <span class="at">alpha =</span> <span class="fl">0.4</span>) <span class="sc">+</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">"red"</span>, <span class="st">"blue"</span>))</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>p</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="04-nonlinear-svm_files/figure-html/ring-data-setup-1.png" class="img-fluid figure-img" width="672"></p>
+<figcaption>The ring training data.</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="linear-kernel-on-the-original-variables" class="level3" data-number="5.8.2">
+<h3 data-number="5.8.2" class="anchored" data-anchor-id="linear-kernel-on-the-original-variables"><span class="header-section-number">5.8.2</span> Linear Kernel on the Original Variables</h3>
+<p>A linear kernel only has access to straight-line separation in the original predictor space. This makes it the wrong model for this geometry.</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Show linear kernel fit code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>linear_model <span class="ot">&lt;-</span> <span class="fu">svm</span>(</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  y <span class="sc">~</span> X1 <span class="sc">+</span> X2,</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> traindf,</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">type =</span> <span class="st">"C-classification"</span>,</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">kernel =</span> <span class="st">"linear"</span>,</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">scale =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">cost =</span> <span class="dv">1</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>linear_results <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">model =</span> <span class="st">"linear kernel on original variables"</span>,</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">train_accuracy =</span> <span class="fu">mean</span>(<span class="fu">predict</span>(linear_model, traindf) <span class="sc">==</span> traindf<span class="sc">$</span>y),</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>  <span class="at">test_accuracy =</span> <span class="fu">mean</span>(<span class="fu">predict</span>(linear_model, testdf) <span class="sc">==</span> testdf<span class="sc">$</span>y)</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>kableExtra<span class="sc">::</span><span class="fu">kable</span>(linear_results)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: left;">model</th>
+<th style="text-align: right;">train_accuracy</th>
+<th style="text-align: right;">test_accuracy</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">linear kernel on original variables</td>
+<td style="text-align: right;">0.703125</td>
+<td style="text-align: right;">0.625</td>
+</tr>
+</tbody>
+</table>
+</div>
+<details class="code-fold">
+<summary>Show linear kernel fit code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(linear_model, traindf[,<span class="fu">c</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>)])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="04-nonlinear-svm_files/figure-html/ring-linear-original-fit-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>To be fair, the performance is better than one may expect give that the model is being asked to solve a circular problem with a straight line. But, given the data, we should be aiming for perfect training accuracy, which makes this relatively poor, as expected.</p>
+</section>
+<section id="linear-kernel-after-explicit-feature-expansion" class="level3" data-number="5.8.3">
+<h3 data-number="5.8.3" class="anchored" data-anchor-id="linear-kernel-after-explicit-feature-expansion"><span class="header-section-number">5.8.3</span> Linear Kernel After Explicit Feature Expansion</h3>
+<p>If we add squared terms, the ring structure becomes easier for a linear classifier to represent.</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Show expanded-feature fit code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>traindf<span class="sc">$</span>X1_sq <span class="ot">&lt;-</span> traindf<span class="sc">$</span>X1<span class="sc">^</span><span class="dv">2</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>traindf<span class="sc">$</span>X2_sq <span class="ot">&lt;-</span> traindf<span class="sc">$</span>X2<span class="sc">^</span><span class="dv">2</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>testdf<span class="sc">$</span>X1_sq <span class="ot">&lt;-</span> testdf<span class="sc">$</span>X1<span class="sc">^</span><span class="dv">2</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>testdf<span class="sc">$</span>X2_sq <span class="ot">&lt;-</span> testdf<span class="sc">$</span>X2<span class="sc">^</span><span class="dv">2</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>expanded_model <span class="ot">&lt;-</span> <span class="fu">svm</span>(</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>  y <span class="sc">~</span> X1_sq <span class="sc">+</span> X2_sq,</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> traindf,</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">type =</span> <span class="st">"C-classification"</span>,</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">kernel =</span> <span class="st">"linear"</span>,</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">scale =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">cost =</span> <span class="dv">1</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>expanded_results <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>  <span class="at">model =</span> <span class="st">"linear kernel on squared variables"</span>,</span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>  <span class="at">train_accuracy =</span> <span class="fu">mean</span>(<span class="fu">predict</span>(expanded_model, traindf) <span class="sc">==</span> traindf<span class="sc">$</span>y),</span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>  <span class="at">test_accuracy =</span> <span class="fu">mean</span>(<span class="fu">predict</span>(expanded_model, testdf) <span class="sc">==</span> testdf<span class="sc">$</span>y)</span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>kableExtra<span class="sc">::</span><span class="fu">kable</span>(expanded_results)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: left;">model</th>
+<th style="text-align: right;">train_accuracy</th>
+<th style="text-align: right;">test_accuracy</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">linear kernel on squared variables</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+</tr>
+</tbody>
+</table>
+</div>
+<details class="code-fold">
+<summary>Show expanded-feature fit code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(expanded_model, traindf[,<span class="fu">c</span>(<span class="dv">3</span>, <span class="dv">4</span>, <span class="dv">5</span>)])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="04-nonlinear-svm_files/figure-html/ring-expanded-linear-fit-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>As we motivated before, the performance is perfect on both the train and test data since the squared variables contain information about distance from the centre of the concentric rings. Therefore, we gave the linear SVM a more useful representation of the problem which made the data linearly separable. The only downside is that we manually expanded the feature space.</p>
+</section>
+<section id="radial-kernel-on-the-original-variables" class="level3" data-number="5.8.4">
+<h3 data-number="5.8.4" class="anchored" data-anchor-id="radial-kernel-on-the-original-variables"><span class="header-section-number">5.8.4</span> Radial Kernel on the Original Variables</h3>
+<p>The radial kernel gives the SVM nonlinear flexibility without manually adding the squared variables.</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Show radial kernel fit code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>radial_model <span class="ot">&lt;-</span> <span class="fu">svm</span>(</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  y <span class="sc">~</span> X1 <span class="sc">+</span> X2,</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> traindf,</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">type =</span> <span class="st">"C-classification"</span>,</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">kernel =</span> <span class="st">"radial"</span>,</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">scale =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">cost =</span> <span class="dv">1</span>,</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">gamma =</span> <span class="fl">0.5</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>radial_results <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">model =</span> <span class="st">"radial kernel on original variables"</span>,</span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>  <span class="at">train_accuracy =</span> <span class="fu">mean</span>(<span class="fu">predict</span>(radial_model, traindf) <span class="sc">==</span> traindf<span class="sc">$</span>y),</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>  <span class="at">test_accuracy =</span> <span class="fu">mean</span>(<span class="fu">predict</span>(radial_model, testdf) <span class="sc">==</span> testdf<span class="sc">$</span>y)</span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>kableExtra<span class="sc">::</span><span class="fu">kable</span>(radial_results)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: left;">model</th>
+<th style="text-align: right;">train_accuracy</th>
+<th style="text-align: right;">test_accuracy</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">radial kernel on original variables</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<details class="code-fold">
+<summary>Show radial kernel boundary plot code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(radial_model, traindf[, <span class="fu">c</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>)])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div id="fig-radialRing" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-radialRing-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="04-nonlinear-svm_files/figure-html/fig-radialRing-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-radialRing-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;5.5: The radial kernel produces a circular boundary in the original 2D space.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>The boundary shown above is nonlinear in the original predictor space. The SVM has not stopped using the margin principle; it is simply applying that principle through a kernel-defined similarity calculation.</p>
+<p>The comparison only reiterates our discussion above:</p>
+<ul>
+<li>a linear boundary in the original space is too restrictive</li>
+<li>explicit feature expansion can make a linear boundary useful again</li>
+<li>a kernel can provide similar flexibility without manually constructing the expanded features</li>
+</ul>
+</section>
+<section id="tune-the-radial-kernel" class="level3" data-number="5.8.5">
+<h3 data-number="5.8.5" class="anchored" data-anchor-id="tune-the-radial-kernel"><span class="header-section-number">5.8.5</span> Tune the Radial Kernel</h3>
+<p>Although not too important in this simulated dataset, the radial kernel has both <code>cost</code> and <code>gamma</code> to tune. The cost parameter controls the penalty for violations, whilst gamma controls how local the radial similarity rule is. Once again, we can use <code>tune.svm</code> to carry out cross-validation for us on these parameters.</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Show radial kernel tuning code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>tuned <span class="ot">&lt;-</span> <span class="fu">tune.svm</span>(</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>  y <span class="sc">~</span> X1 <span class="sc">+</span> X2,</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> traindf,</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">kernel =</span> <span class="st">"radial"</span>,</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">cost =</span> <span class="fu">seq</span>(<span class="fl">0.1</span>, <span class="dv">2</span>, <span class="at">by =</span> <span class="fl">0.1</span>),</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">gamma =</span> <span class="fu">c</span>(<span class="fl">0.05</span>, <span class="fl">0.1</span>, <span class="fl">0.25</span>, <span class="fl">0.5</span>, <span class="dv">1</span>),</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">tunecontrol =</span> <span class="fu">tune.control</span>(<span class="at">cross =</span> <span class="dv">10</span>)</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>kableExtra<span class="sc">::</span><span class="fu">kable</span>(<span class="fu">data.frame</span>(</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>  <span class="at">best_cost =</span> tuned<span class="sc">$</span>best.parameters<span class="sc">$</span>cost,</span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>  <span class="at">best_gamma =</span> tuned<span class="sc">$</span>best.parameters<span class="sc">$</span>gamma,</span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>  <span class="at">best_cross_validation_error =</span> tuned<span class="sc">$</span>best.performance</span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: right;">best_cost</th>
+<th style="text-align: right;">best_gamma</th>
+<th style="text-align: right;">best_cross_validation_error</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">0.1</td>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">0</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>As before, cross-validation estimates how the model performs on held-out data. We do not choose <code>cost</code> and <code>gamma</code> purely by training accuracy because a very flexible radial SVM can easily overfit.</p>
+</section>
+</section>
+<section id="takeaway" class="level2" data-number="5.9">
+<h2 data-number="5.9" class="anchored" data-anchor-id="takeaway"><span class="header-section-number">5.9</span> Takeaway</h2>
+<p>Nonlinear SVMs extend the linear SVM rather than replace it:</p>
+<ul>
+<li>the margin idea remains at the core</li>
+<li>support vectors still determine the classifier</li>
+<li>the boundary is linear in a transformed feature space</li>
+<li>kernels let us use that richer space through similarity calculations</li>
+</ul>
+<p><em>An SVM is not limited to linear boundaries. A linear boundary in a well-chosen feature space can become a nonlinear boundary in the original predictor space.</em></p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./03-soft-margin.html" class="pagination-link" aria-label="Soft Margin Classifier">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Soft Margin Classifier</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./appendix-concepts.html" class="pagination-link" aria-label="Some Mathematical Support">
+        <span class="nav-page-text"><span class="chapter-number">A</span>&nbsp; <span class="chapter-title">Some Mathematical Support</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
