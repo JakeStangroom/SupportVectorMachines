@@ -1,0 +1,2590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>The Maximal Margin Classifier</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #0d1014; }
+  #root { min-height: 100vh; }
+</style>
+<!-- React 18 + Babel from CDN. Babel compiles JSX in the browser. -->
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useRef, useMemo, useCallback } = React;
+
+
+// ============================================================================
+// IRIS DATA (the canonical R/Fisher dataset)
+// columns: Sepal.Length, Sepal.Width, Petal.Length, Petal.Width, Species
+// ============================================================================
+const IRIS_RAW = `5.1,3.5,1.4,0.2,setosa
+4.9,3.0,1.4,0.2,setosa
+4.7,3.2,1.3,0.2,setosa
+4.6,3.1,1.5,0.2,setosa
+5.0,3.6,1.4,0.2,setosa
+5.4,3.9,1.7,0.4,setosa
+4.6,3.4,1.4,0.3,setosa
+5.0,3.4,1.5,0.2,setosa
+4.4,2.9,1.4,0.2,setosa
+4.9,3.1,1.5,0.1,setosa
+5.4,3.7,1.5,0.2,setosa
+4.8,3.4,1.6,0.2,setosa
+4.8,3.0,1.4,0.1,setosa
+4.3,3.0,1.1,0.1,setosa
+5.8,4.0,1.2,0.2,setosa
+5.7,4.4,1.5,0.4,setosa
+5.4,3.9,1.3,0.4,setosa
+5.1,3.5,1.4,0.3,setosa
+5.7,3.8,1.7,0.3,setosa
+5.1,3.8,1.5,0.3,setosa
+5.4,3.4,1.7,0.2,setosa
+5.1,3.7,1.5,0.4,setosa
+4.6,3.6,1.0,0.2,setosa
+5.1,3.3,1.7,0.5,setosa
+4.8,3.4,1.9,0.2,setosa
+5.0,3.0,1.6,0.2,setosa
+5.0,3.4,1.6,0.4,setosa
+5.2,3.5,1.5,0.2,setosa
+5.2,3.4,1.4,0.2,setosa
+4.7,3.2,1.6,0.2,setosa
+4.8,3.1,1.6,0.2,setosa
+5.4,3.4,1.5,0.4,setosa
+5.2,4.1,1.5,0.1,setosa
+5.5,4.2,1.4,0.2,setosa
+4.9,3.1,1.5,0.2,setosa
+5.0,3.2,1.2,0.2,setosa
+5.5,3.5,1.3,0.2,setosa
+4.9,3.6,1.4,0.1,setosa
+4.4,3.0,1.3,0.2,setosa
+5.1,3.4,1.5,0.2,setosa
+5.0,3.5,1.3,0.3,setosa
+4.5,2.3,1.3,0.3,setosa
+4.4,3.2,1.3,0.2,setosa
+5.0,3.5,1.6,0.6,setosa
+5.1,3.8,1.9,0.4,setosa
+4.8,3.0,1.4,0.3,setosa
+5.1,3.8,1.6,0.2,setosa
+4.6,3.2,1.4,0.2,setosa
+5.3,3.7,1.5,0.2,setosa
+5.0,3.3,1.4,0.2,setosa
+7.0,3.2,4.7,1.4,versicolor
+6.4,3.2,4.5,1.5,versicolor
+6.9,3.1,4.9,1.5,versicolor
+5.5,2.3,4.0,1.3,versicolor
+6.5,2.8,4.6,1.5,versicolor
+5.7,2.8,4.5,1.3,versicolor
+6.3,3.3,4.7,1.6,versicolor
+4.9,2.4,3.3,1.0,versicolor
+6.6,2.9,4.6,1.3,versicolor
+5.2,2.7,3.9,1.4,versicolor
+5.0,2.0,3.5,1.0,versicolor
+5.9,3.0,4.2,1.5,versicolor
+6.0,2.2,4.0,1.0,versicolor
+6.1,2.9,4.7,1.4,versicolor
+5.6,2.9,3.6,1.3,versicolor
+6.7,3.1,4.4,1.4,versicolor
+5.6,3.0,4.5,1.5,versicolor
+5.8,2.7,4.1,1.0,versicolor
+6.2,2.2,4.5,1.5,versicolor
+5.6,2.5,3.9,1.1,versicolor
+5.9,3.2,4.8,1.8,versicolor
+6.1,2.8,4.0,1.3,versicolor
+6.3,2.5,4.9,1.5,versicolor
+6.1,2.8,4.7,1.2,versicolor
+6.4,2.9,4.3,1.3,versicolor
+6.6,3.0,4.4,1.4,versicolor
+6.8,2.8,4.8,1.4,versicolor
+6.7,3.0,5.0,1.7,versicolor
+6.0,2.9,4.5,1.5,versicolor
+5.7,2.6,3.5,1.0,versicolor
+5.5,2.4,3.8,1.1,versicolor
+5.5,2.4,3.7,1.0,versicolor
+5.8,2.7,3.9,1.2,versicolor
+6.0,2.7,5.1,1.6,versicolor
+5.4,3.0,4.5,1.5,versicolor
+6.0,3.4,4.5,1.6,versicolor
+6.7,3.1,4.7,1.5,versicolor
+6.3,2.3,4.4,1.3,versicolor
+5.6,3.0,4.1,1.3,versicolor
+5.5,2.5,4.0,1.3,versicolor
+5.5,2.6,4.4,1.2,versicolor
+6.1,3.0,4.6,1.4,versicolor
+5.8,2.6,4.0,1.2,versicolor
+5.0,2.3,3.3,1.0,versicolor
+5.6,2.7,4.2,1.3,versicolor
+5.7,3.0,4.2,1.2,versicolor
+5.7,2.9,4.2,1.3,versicolor
+6.2,2.9,4.3,1.3,versicolor
+5.1,2.5,3.0,1.1,versicolor
+5.7,2.8,4.1,1.3,versicolor
+6.3,3.3,6.0,2.5,virginica
+5.8,2.7,5.1,1.9,virginica
+7.1,3.0,5.9,2.1,virginica
+6.3,2.9,5.6,1.8,virginica
+6.5,3.0,5.8,2.2,virginica
+7.6,3.0,6.6,2.1,virginica
+4.9,2.5,4.5,1.7,virginica
+7.3,2.9,6.3,1.8,virginica
+6.7,2.5,5.8,1.8,virginica
+7.2,3.6,6.1,2.5,virginica
+6.5,3.2,5.1,2.0,virginica
+6.4,2.7,5.3,1.9,virginica
+6.8,3.0,5.5,2.1,virginica
+5.7,2.5,5.0,2.0,virginica
+5.8,2.8,5.1,2.4,virginica
+6.4,3.2,5.3,2.3,virginica
+6.5,3.0,5.5,1.8,virginica
+7.7,3.8,6.7,2.2,virginica
+7.7,2.6,6.9,2.3,virginica
+6.0,2.2,5.0,1.5,virginica
+6.9,3.2,5.7,2.3,virginica
+5.6,2.8,4.9,2.0,virginica
+7.7,2.8,6.7,2.0,virginica
+6.3,2.7,4.9,1.8,virginica
+6.7,3.3,5.7,2.1,virginica
+7.2,3.2,6.0,1.8,virginica
+6.2,2.8,4.8,1.8,virginica
+6.1,3.0,4.9,1.8,virginica
+6.4,2.8,5.6,2.1,virginica
+7.2,3.0,5.8,1.6,virginica
+7.4,2.8,6.1,1.9,virginica
+7.9,3.8,6.4,2.0,virginica
+6.4,2.8,5.6,2.2,virginica
+6.3,2.8,5.1,1.5,virginica
+6.1,2.6,5.6,1.4,virginica
+7.7,3.0,6.1,2.3,virginica
+6.3,3.4,5.6,2.4,virginica
+6.4,3.1,5.5,1.8,virginica
+6.0,3.0,4.8,1.8,virginica
+6.9,3.1,5.4,2.1,virginica
+6.7,3.1,5.6,2.4,virginica
+6.9,3.1,5.1,2.3,virginica
+5.8,2.7,5.1,1.9,virginica
+6.8,3.2,5.9,2.3,virginica
+6.7,3.3,5.7,2.5,virginica
+6.7,3.0,5.2,2.3,virginica
+6.3,2.5,5.0,1.9,virginica
+6.5,3.0,5.2,2.0,virginica
+6.2,3.4,5.4,2.3,virginica
+5.9,3.0,5.1,1.8,virginica`;
+
+const FEATURE_NAMES = ["Sepal Length", "Sepal Width", "Petal Length", "Petal Width"];
+const FEATURE_SHORT = ["SL", "SW", "PL", "PW"];
+
+const IRIS = IRIS_RAW.split("\n").map((line, i) => {
+  const parts = line.split(",");
+  return {
+    id: i,
+    features: [parseFloat(parts[0]), parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3])],
+    species: parts[4],
+  };
+});
+
+// ============================================================================
+// LINEAR ALGEBRA HELPERS
+// ============================================================================
+const vAdd = (a, b) => a.map((x, i) => x + b[i]);
+const vSub = (a, b) => a.map((x, i) => x - b[i]);
+const vScale = (a, s) => a.map((x) => x * s);
+const vDot = (a, b) => a.reduce((s, x, i) => s + x * b[i], 0);
+const vNorm = (a) => Math.sqrt(vDot(a, a));
+const vNormalize = (a) => {
+  const n = vNorm(a);
+  return n < 1e-12 ? a : vScale(a, 1 / n);
+};
+
+// ============================================================================
+// SEPARABILITY CHECK (Perceptron)
+// Hard-margin SVM only has a solution if the data is linearly separable.
+// We detect this with a perceptron: if it converges, separable; if it cycles
+// past a generous iteration budget, treat as non-separable.
+// ============================================================================
+function checkSeparable(X, y, maxIters = 800) {
+  const n = X.length;
+  if (n === 0) return true;
+  const d = X[0].length;
+  const w = new Array(d).fill(0);
+  let b = 0;
+  for (let it = 0; it < maxIters; it++) {
+    let updated = false;
+    for (let i = 0; i < n; i++) {
+      if (y[i] * (vDot(w, X[i]) + b) <= 0) {
+        for (let k = 0; k < d; k++) w[k] += y[i] * X[i][k];
+        b += y[i];
+        updated = true;
+      }
+    }
+    if (!updated) return true;
+  }
+  return false;
+}
+
+// ============================================================================
+// HARD-MARGIN SVM SOLVER (with iteration history)
+// Solves the dual via projected gradient ascent:
+//   max_α  Σ α_i − ½ Σ_ij α_i α_j y_i y_j x_i·x_j
+//   s.t.   α_i ≥ 0,  Σ α_i y_i = 0
+// We snapshot (w, b) at intervals so the UI can scrub through the actual
+// optimization trajectory rather than interpolating between start and end.
+// Features are internally standardized for numerical stability and (w, b)
+// is mapped back to the original coordinate frame.
+// ============================================================================
+function solveSVM(X, y, opts = {}) {
+  const {
+    snapshots = 80,
+    tol = 1e-6,
+    patience = 5,
+    checkEvery = 100,
+    C = Infinity,
+  } = opts;
+  // lr=0.01 is the correct fixed step size for the dual gradient ascent
+  // regardless of C — the dual gradient magnitude doesn't scale with C, so
+  // larger steps just cause oscillation around the box constraints.
+  // For high C with non-separable data we just need more iterations.
+  const cFinite = isFinite(C) ? C : 1.0;
+  const iters = opts.iters ?? (cFinite > 50 ? 30000 : 20000);
+  const lr = opts.lr ?? 0.01;
+  const n = X.length;
+  if (n === 0) return null;
+  const d = X[0].length;
+
+  // Standardize: center and scale each feature into ~[-1, 1]
+  const mean = new Array(d).fill(0);
+  const scale = new Array(d).fill(1);
+  for (let k = 0; k < d; k++) {
+    let mn = Infinity, mx = -Infinity;
+    for (let i = 0; i < n; i++) {
+      if (X[i][k] < mn) mn = X[i][k];
+      if (X[i][k] > mx) mx = X[i][k];
+    }
+    mean[k] = (mn + mx) / 2;
+    scale[k] = Math.max((mx - mn) / 2, 1e-6);
+  }
+  const Xn = X.map((x) => x.map((v, k) => (v - mean[k]) / scale[k]));
+
+  const alpha = new Array(n).fill(0);
+  const K = [];
+  for (let i = 0; i < n; i++) {
+    K.push(new Array(n));
+    for (let j = 0; j < n; j++) K[i][j] = y[i] * y[j] * vDot(Xn[i], Xn[j]);
+  }
+
+  // Dual objective L(α) = Σα_i − ½ Σα_i α_j y_i y_j K_ij
+  const dualObj = () => {
+    let s = 0, q = 0;
+    for (let i = 0; i < n; i++) s += alpha[i];
+    for (let i = 0; i < n; i++)
+      for (let j = 0; j < n; j++) q += alpha[i] * alpha[j] * K[i][j];
+    return s - 0.5 * q;
+  };
+
+  // Recover (w, b) in *original* coordinates from current α.
+  // Soft-margin: 0 ≤ α_i ≤ C. Categorize SVs:
+  //   - margin SV:  0 < α_i < C  (lies exactly on the margin)
+  //   - slack SV:   α_i = C       (inside the margin or misclassified)
+  // For b, average over MARGIN SVs (those satisfy y_i(w·x_i+b) = 1 exactly).
+  const recover = () => {
+    const wn = new Array(d).fill(0);
+    for (let i = 0; i < n; i++) {
+      if (alpha[i] > 1e-9) {
+        for (let k = 0; k < d; k++) wn[k] += alpha[i] * y[i] * Xn[i][k];
+      }
+    }
+    const Ceps = isFinite(C) ? C - 1e-6 : Infinity;
+    const marginSV = [];
+    const slackSV = [];
+    for (let i = 0; i < n; i++) {
+      if (alpha[i] > 1e-6) {
+        if (alpha[i] >= Ceps) slackSV.push(i);
+        else marginSV.push(i);
+      }
+    }
+    let bn = 0;
+    if (marginSV.length > 0) {
+      for (const i of marginSV) bn += y[i] - vDot(wn, Xn[i]);
+      bn /= marginSV.length;
+    } else if (marginSV.length + slackSV.length > 0) {
+      // fallback: average over all SVs (rare; happens early in iteration)
+      const allSV = marginSV.concat(slackSV);
+      for (const i of allSV) bn += y[i] - vDot(wn, Xn[i]);
+      bn /= allSV.length;
+    }
+    // Map back to original space
+    const w = wn.map((v, k) => v / scale[k]);
+    let b = bn;
+    for (let k = 0; k < d; k++) b -= w[k] * mean[k];
+    const supportVectors = marginSV.concat(slackSV);
+    const svType = {};
+    for (const i of marginSV) svType[i] = "margin";
+    for (const i of slackSV) svType[i] = "slack";
+    return { w, b, supportVectors, svType };
+  };
+
+  const history = [];
+  history.push({ iter: 0, w: new Array(d).fill(0), b: 0, supportVectors: [], svType: {} });
+
+  const snapEvery = Math.max(1, Math.floor(iters / snapshots));
+  let prevObj = -Infinity;
+  let stagnant = 0;
+  let stoppedAt = iters;
+  let stopReason = "maxIters";
+
+  for (let it = 1; it <= iters; it++) {
+    const g = new Array(n);
+    for (let i = 0; i < n; i++) {
+      let s = 0;
+      for (let j = 0; j < n; j++) s += alpha[j] * K[i][j];
+      g[i] = 1 - s;
+    }
+    for (let i = 0; i < n; i++) alpha[i] += lr * g[i];
+    // Box constraint: 0 ≤ α_i ≤ C
+    for (let i = 0; i < n; i++) {
+      if (alpha[i] < 0) alpha[i] = 0;
+      else if (alpha[i] > C) alpha[i] = C;
+    }
+    // Equality projection Σα_i y_i = 0: subtract mean over the *interior* set
+    // (α_i strictly between 0 and C). Box-bound α can't be moved without
+    // violating their constraint, so we re-project only over the free set.
+    let sumAy = 0, active = 0;
+    for (let i = 0; i < n; i++) {
+      if (alpha[i] > 0 && alpha[i] < C) { sumAy += alpha[i] * y[i]; active++; }
+    }
+    if (active > 0) {
+      const adj = sumAy / active;
+      for (let i = 0; i < n; i++) {
+        if (alpha[i] > 0 && alpha[i] < C) {
+          alpha[i] -= adj * y[i];
+          if (alpha[i] < 0) alpha[i] = 0;
+          else if (alpha[i] > C) alpha[i] = C;
+        }
+      }
+    }
+    if (it % snapEvery === 0 || it === iters) {
+      const snap = recover();
+      history.push({
+        iter: it,
+        w: snap.w,
+        b: snap.b,
+        supportVectors: snap.supportVectors,
+        svType: snap.svType,
+      });
+    }
+    // Early stopping: relative dual-objective gain < tol for `patience` checks in a row
+    if (it % checkEvery === 0) {
+      const obj = dualObj();
+      const rel = (obj - prevObj) / Math.max(Math.abs(obj), 1e-9);
+      if (rel < tol) {
+        stagnant++;
+        if (stagnant >= patience) {
+          stoppedAt = it;
+          stopReason = "converged";
+          break;
+        }
+      } else {
+        stagnant = 0;
+      }
+      prevObj = obj;
+    }
+  }
+
+  // Ensure the final iterate is in history
+  if (history[history.length - 1].iter !== stoppedAt) {
+    const snap = recover();
+    history.push({
+      iter: stoppedAt,
+      w: snap.w,
+      b: snap.b,
+      supportVectors: snap.supportVectors,
+      svType: snap.svType,
+    });
+  }
+
+  const final = history[history.length - 1];
+  return {
+    w: final.w,
+    b: final.b,
+    supportVectors: final.supportVectors,
+    svType: final.svType || {},
+    history,
+    stoppedAt,
+    stopReason,
+    C,
+  };
+}
+
+// ============================================================================
+// AXIS-TICK HELPER (nice round numbers)
+// ============================================================================
+function niceTicks(min, max, count = 5) {
+  const range = max - min;
+  if (range <= 0) return [min];
+  const rawStep = range / count;
+  const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+  const norm = rawStep / mag;
+  let step;
+  if (norm < 1.5) step = mag;
+  else if (norm < 3) step = 2 * mag;
+  else if (norm < 7) step = 5 * mag;
+  else step = 10 * mag;
+  const ticks = [];
+  const start = Math.ceil(min / step) * step;
+  for (let v = start; v <= max + 1e-9; v += step) ticks.push(Math.round(v / step) * step);
+  return ticks;
+}
+
+// ============================================================================
+// 2D SVM CANVAS
+// ============================================================================
+function SVMCanvas2D({
+  points,
+  setPoints,
+  classA,
+  classB,
+  featX,
+  featY,
+  initW,
+  initB,
+  setInitW,
+  setInitB,
+  isAnimating,
+  setIsAnimating,
+  animationProgress,
+  setAnimationProgress,
+  showSupportVectors,
+  onPlaneInfo,
+  tolerance,
+  marginType,
+  cValue,
+}) {
+  const svgRef = useRef(null);
+  const [draggingId, setDraggingId] = useState(null);
+  const [adjustingPlane, setAdjustingPlane] = useState(null); // 'angle' | 'offset' | null
+  const [hoveredId, setHoveredId] = useState(null);
+
+  const W = 600;
+  const H = 500;
+  const PAD = 50;
+
+  // Compute axis bounds with padding
+  const { xMin, xMax, yMin, yMax } = useMemo(() => {
+    if (points.length === 0) return { xMin: 0, xMax: 8, yMin: 0, yMax: 8 };
+    const xs = points.map((p) => p.features[featX]);
+    const ys = points.map((p) => p.features[featY]);
+    const xRange = Math.max(...xs) - Math.min(...xs);
+    const yRange = Math.max(...ys) - Math.min(...ys);
+    return {
+      xMin: Math.min(...xs) - xRange * 0.15,
+      xMax: Math.max(...xs) + xRange * 0.15,
+      yMin: Math.min(...ys) - yRange * 0.15,
+      yMax: Math.max(...ys) + yRange * 0.15,
+    };
+  }, [points, featX, featY]);
+
+  const x2px = (x) => PAD + ((x - xMin) / (xMax - xMin)) * (W - 2 * PAD);
+  const y2px = (y) => H - PAD - ((y - yMin) / (yMax - yMin)) * (H - 2 * PAD);
+  const px2x = (px) => xMin + ((px - PAD) / (W - 2 * PAD)) * (xMax - xMin);
+  const px2y = (py) => yMin + ((H - PAD - py) / (H - 2 * PAD)) * (yMax - yMin);
+
+  // Filter to only the two selected classes
+  const filteredPoints = useMemo(
+    () => points.filter((p) => p.species === classA || p.species === classB),
+    [points, classA, classB]
+  );
+
+  // Solve the SVM (non-blocking: runs after render via useEffect)
+  // We store the full solver output so we can scrub through real iterations.
+  const [solution, setSolution] = useState(null);
+  const [separable, setSeparable] = useState(true);
+  useEffect(() => {
+    if (filteredPoints.length < 2) {
+      setSolution(null);
+      setSeparable(true);
+      return;
+    }
+    const X = filteredPoints.map((p) => [p.features[featX], p.features[featY]]);
+    const y = filteredPoints.map((p) => (p.species === classA ? 1 : -1));
+    const sep = checkSeparable(X, y);
+    setSeparable(sep);
+    // In hard-margin mode, non-separable data has no solution — bail.
+    // In soft-margin mode, the solver always has a solution.
+    if (marginType === "hard" && !sep) {
+      setSolution(null);
+      return;
+    }
+    const handle = requestAnimationFrame(() => {
+      setSolution(solveSVM(X, y, { snapshots: 80, tol: tolerance, C: marginType === "soft" ? cValue : Infinity }));
+    });
+    return () => cancelAnimationFrame(handle);
+  }, [filteredPoints, featX, featY, classA, classB, tolerance, marginType, cValue]);
+
+  // Map solution support vectors back to point IDs, and their type ("margin" | "slack")
+  const svIds = useMemo(() => {
+    if (!solution) return new Set();
+    return new Set(solution.supportVectors.map((i) => filteredPoints[i].id));
+  }, [solution, filteredPoints]);
+  const svTypeById = useMemo(() => {
+    const m = new Map();
+    if (!solution) return m;
+    for (const i of solution.supportVectors) {
+      m.set(filteredPoints[i].id, solution.svType[i] || "margin");
+    }
+    return m;
+  }, [solution, filteredPoints]);
+
+  // Currently displayed plane: scrubs through the actual optimization history.
+  // animationProgress = 0 → user's chosen starting plane
+  // animationProgress = 1 → the final converged optimum
+  // intermediate values → real iterates from the dual solver
+  const currentPlane = useMemo(() => {
+    if (!solution || !solution.history || solution.history.length < 2) {
+      return { w: initW, b: initB };
+    }
+    const t = Math.max(0, Math.min(1, animationProgress));
+    const hist = solution.history;
+    // At t=0, blend smoothly from user's chosen plane to history[0] (which is zero plane)
+    // Simpler: interpret t = 0 as the user's plane, t > 0 as snapshot index
+    if (t === 0) return { w: initW, b: initB };
+    // Map t ∈ (0, 1] to history index ∈ [0, len-1] with a slight ease so first
+    // half of the slider shows the bulk of meaningful change
+    const eased = 1 - Math.pow(1 - t, 2);
+    const idx = Math.min(hist.length - 1, Math.floor(eased * (hist.length - 1)));
+    // Blend from user's initial plane to history[idx] when idx is small,
+    // so the very first iterates aren't a jump from (initW, initB) to (0, 0).
+    if (idx === 0) return { w: initW, b: initB };
+    return { w: hist[idx].w.slice(), b: hist[idx].b };
+  }, [initW, initB, solution, animationProgress]);
+
+  // Report the displayed plane up to the parent for the parameter table.
+  useEffect(() => {
+    if (!onPlaneInfo) return;
+    const hist = solution && solution.history;
+    let iter = 0;
+    let totalIters = 0;
+    if (hist && hist.length > 1) {
+      totalIters = hist[hist.length - 1].iter;
+      const t = Math.max(0, Math.min(1, animationProgress));
+      if (t > 0) {
+        const eased = 1 - Math.pow(1 - t, 2);
+        const idx = Math.min(hist.length - 1, Math.floor(eased * (hist.length - 1)));
+        iter = hist[idx].iter;
+      }
+    }
+    let svCounts = null;
+    if (solution) {
+      let m = 0, s = 0;
+      for (const i of solution.supportVectors) {
+        if (solution.svType[i] === "slack") s++; else m++;
+      }
+      svCounts = { margin: m, slack: s };
+    }
+    onPlaneInfo({
+      dim: 2,
+      featNames: [FEATURE_NAMES[featX], FEATURE_NAMES[featY]],
+      u: currentPlane.w.slice(),
+      b: currentPlane.b,
+      optimal: solution ? { u: solution.w.slice(), b: solution.b } : null,
+      margin: solution ? 2 / vNorm(solution.w) : null,
+      separable,
+      iter,
+      totalIters,
+      stopReason: solution ? solution.stopReason : null,
+      atOptimum: animationProgress >= 0.999,
+      svCounts,
+    });
+  }, [currentPlane, solution, separable, animationProgress, featX, featY, onPlaneInfo]);
+
+  // Animation loop
+  useEffect(() => {
+    if (!isAnimating) return;
+    let raf;
+    const start = performance.now();
+    const dur = 3500;
+    const tick = () => {
+      const t = Math.min(1, (performance.now() - start) / dur);
+      setAnimationProgress(t);
+      if (t < 1) raf = requestAnimationFrame(tick);
+      else setIsAnimating(false);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [isAnimating, setAnimationProgress, setIsAnimating]);
+
+  // Compute line endpoints for a given (w, b): w·x + b = c
+  const lineForLevel = (w, b, c) => {
+    // w0 x + w1 y + b = c  =>  if |w1| > |w0|, parameterize by x; else by y
+    const pts = [];
+    if (Math.abs(w[1]) > Math.abs(w[0])) {
+      const yAt = (x) => (c - b - w[0] * x) / w[1];
+      pts.push([xMin, yAt(xMin)]);
+      pts.push([xMax, yAt(xMax)]);
+    } else if (Math.abs(w[0]) > 1e-9) {
+      const xAt = (y) => (c - b - w[1] * y) / w[0];
+      pts.push([xAt(yMin), yMin]);
+      pts.push([xAt(yMax), yMax]);
+    }
+    return pts;
+  };
+
+  const decision = lineForLevel(currentPlane.w, currentPlane.b, 0);
+  const margin1 = solution ? lineForLevel(currentPlane.w, currentPlane.b, 1) : null;
+  const marginM1 = solution ? lineForLevel(currentPlane.w, currentPlane.b, -1) : null;
+
+  // Show margin lines whenever we're displaying a real solver iterate
+  // (i.e. animationProgress > 0). At progress=0 we show the user's chosen
+  // initial plane, which has no associated ±1 margin yet.
+  const showMargins = solution && animationProgress > 0.001;
+
+  // Mouse events
+  const handleMouseDown = (e, point) => {
+    e.stopPropagation();
+    setDraggingId(point.id);
+  };
+
+  const handleMouseMove = (e) => {
+    if (!svgRef.current) return;
+    const rect = svgRef.current.getBoundingClientRect();
+    const px = ((e.clientX - rect.left) / rect.width) * W;
+    const py = ((e.clientY - rect.top) / rect.height) * H;
+
+    if (draggingId !== null) {
+      const newX = px2x(px);
+      const newY = px2y(py);
+      setPoints((prev) =>
+        prev.map((p) => {
+          if (p.id !== draggingId) return p;
+          const f = [...p.features];
+          f[featX] = newX;
+          f[featY] = newY;
+          return { ...p, features: f };
+        })
+      );
+      // Show the new optimum immediately when perturbing data
+      if (animationProgress < 1) setAnimationProgress(1);
+    } else if (adjustingPlane === "angle") {
+      // Rotate w to point from screen center toward cursor
+      const cx = (xMin + xMax) / 2;
+      const cy = (yMin + yMax) / 2;
+      const dx = px2x(px) - cx;
+      const dy = px2y(py) - cy;
+      const n = Math.sqrt(dx * dx + dy * dy);
+      if (n > 1e-6) setInitW([dx / n, dy / n]);
+    } else if (adjustingPlane === "offset") {
+      // Adjust b so the line passes through cursor for current w
+      const x0 = px2x(px);
+      const y0 = px2y(py);
+      setInitB(-(initW[0] * x0 + initW[1] * y0));
+    }
+  };
+
+  const handleMouseUp = () => {
+    setDraggingId(null);
+    setAdjustingPlane(null);
+  };
+
+  // Keep init plane "frozen" once we start animating; reset when user taps reset
+  return (
+    <div style={{ position: "relative" }}>
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${W} ${H}`}
+        style={{
+          width: "100%",
+          height: "auto",
+          background: "var(--canvas-bg)",
+          borderRadius: "4px",
+          cursor: draggingId !== null ? "grabbing" : "default",
+          userSelect: "none",
+        }}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      >
+        {/* Grid */}
+        {niceTicks(xMin, xMax, 6).map((t, i) => (
+          <line key={`gx${i}`} x1={x2px(t)} y1={PAD} x2={x2px(t)} y2={H - PAD} stroke="var(--grid)" strokeWidth="0.5" />
+        ))}
+        {niceTicks(yMin, yMax, 6).map((t, i) => (
+          <line key={`gy${i}`} x1={PAD} y1={y2px(t)} x2={W - PAD} y2={y2px(t)} stroke="var(--grid)" strokeWidth="0.5" />
+        ))}
+
+        {/* Axes */}
+        <line x1={PAD} y1={H - PAD} x2={W - PAD} y2={H - PAD} stroke="var(--axis)" strokeWidth="1" />
+        <line x1={PAD} y1={PAD} x2={PAD} y2={H - PAD} stroke="var(--axis)" strokeWidth="1" />
+
+        {/* Tick labels */}
+        {niceTicks(xMin, xMax, 6).map((t, i) => (
+          <text
+            key={`tx${i}`}
+            x={x2px(t)}
+            y={H - PAD + 18}
+            textAnchor="middle"
+            fontSize="11"
+            fontFamily="var(--font-mono)"
+            fill="var(--text-dim)"
+          >
+            {t.toFixed(1)}
+          </text>
+        ))}
+        {niceTicks(yMin, yMax, 6).map((t, i) => (
+          <text
+            key={`ty${i}`}
+            x={PAD - 8}
+            y={y2px(t) + 4}
+            textAnchor="end"
+            fontSize="11"
+            fontFamily="var(--font-mono)"
+            fill="var(--text-dim)"
+          >
+            {t.toFixed(1)}
+          </text>
+        ))}
+
+        {/* Axis labels */}
+        <text
+          x={W / 2}
+          y={H - 12}
+          textAnchor="middle"
+          fontSize="13"
+          fontFamily="var(--font-display)"
+          fill="var(--text)"
+          fontStyle="italic"
+        >
+          {FEATURE_NAMES[featX]}
+        </text>
+        <text
+          x={16}
+          y={H / 2}
+          textAnchor="middle"
+          fontSize="13"
+          fontFamily="var(--font-display)"
+          fill="var(--text)"
+          fontStyle="italic"
+          transform={`rotate(-90 16 ${H / 2})`}
+        >
+          {FEATURE_NAMES[featY]}
+        </text>
+
+        {/* Margin region (shaded) */}
+        {showMargins && margin1 && marginM1 && (
+          <polygon
+            points={`${x2px(margin1[0][0])},${y2px(margin1[0][1])} ${x2px(margin1[1][0])},${y2px(margin1[1][1])} ${x2px(marginM1[1][0])},${y2px(marginM1[1][1])} ${x2px(marginM1[0][0])},${y2px(marginM1[0][1])}`}
+            fill="var(--margin-fill)"
+            opacity="0.15"
+          />
+        )}
+
+        {/* Margin lines */}
+        {showMargins && margin1 && (
+          <line
+            x1={x2px(margin1[0][0])}
+            y1={y2px(margin1[0][1])}
+            x2={x2px(margin1[1][0])}
+            y2={y2px(margin1[1][1])}
+            stroke="var(--margin-line)"
+            strokeWidth="1"
+            strokeDasharray="4 4"
+            opacity={0.7}
+          />
+        )}
+        {showMargins && marginM1 && (
+          <line
+            x1={x2px(marginM1[0][0])}
+            y1={y2px(marginM1[0][1])}
+            x2={x2px(marginM1[1][0])}
+            y2={y2px(marginM1[1][1])}
+            stroke="var(--margin-line)"
+            strokeWidth="1"
+            strokeDasharray="4 4"
+            opacity={0.7}
+          />
+        )}
+
+        {/* Decision boundary — only when separable */}
+        {decision.length === 2 && (
+          <line
+            x1={x2px(decision[0][0])}
+            y1={y2px(decision[0][1])}
+            x2={x2px(decision[1][0])}
+            y2={y2px(decision[1][1])}
+            stroke="var(--accent)"
+            strokeWidth="2.5"
+          />
+        )}
+
+        {/* Data points */}
+        {filteredPoints.map((p) => {
+          const isA = p.species === classA;
+          const cx = x2px(p.features[featX]);
+          const cy = y2px(p.features[featY]);
+          // Show SV rings once we've scrubbed close to the optimum
+          const isSV = showSupportVectors && svIds.has(p.id) && animationProgress > 0.98;
+          const svKind = isSV ? svTypeById.get(p.id) : null;
+          const isHovered = hoveredId === p.id;
+          const isDragging = draggingId === p.id;
+          return (
+            <g key={p.id}>
+              {isSV && svKind === "margin" && (
+                <circle
+                  cx={cx} cy={cy} r={11}
+                  fill="none"
+                  stroke="var(--sv-ring)"
+                  strokeWidth="2"
+                  opacity="0.9"
+                />
+              )}
+              {isSV && svKind === "slack" && (
+                <circle
+                  cx={cx} cy={cy} r={11}
+                  fill="none"
+                  stroke="var(--warn)"
+                  strokeWidth="2"
+                  strokeDasharray="3 3"
+                  opacity="0.9"
+                />
+              )}
+              <circle
+                cx={cx}
+                cy={cy}
+                r={isHovered || isDragging ? 7 : 5.5}
+                fill={isA ? "var(--class-a)" : "var(--class-b)"}
+                stroke="var(--canvas-bg)"
+                strokeWidth="1.5"
+                style={{ cursor: "grab" }}
+                onMouseDown={(e) => handleMouseDown(e, p)}
+                onMouseEnter={() => setHoveredId(p.id)}
+                onMouseLeave={() => setHoveredId(null)}
+              />
+            </g>
+          );
+        })}
+
+        {/* Non-separable warning */}
+        {!separable && marginType === "hard" && (
+          <g transform={`translate(${W / 2}, ${H / 2})`}>
+            <rect x={-180} y={-40} width={360} height={80} rx={4}
+              fill="var(--canvas-bg)" stroke="var(--warn)" strokeWidth="1.5" opacity="0.95" />
+            <text textAnchor="middle" fontSize="13" fontFamily="var(--font-display)"
+              fontStyle="italic" fill="var(--warn)" y={-8}>
+              Data is not linearly separable
+            </text>
+            <text textAnchor="middle" fontSize="10" fontFamily="var(--font-mono)"
+              fill="var(--text-dim)" y={14} letterSpacing="0.5">
+              hard-margin SVM has no solution here
+            </text>
+            <text textAnchor="middle" fontSize="10" fontFamily="var(--font-mono)"
+              fill="var(--text-dim)" y={28} letterSpacing="0.5">
+              move points back, or use soft margin
+            </text>
+          </g>
+        )}
+
+        {/* Math overlay */}
+        <g transform={`translate(${W - PAD - 8}, ${PAD + 14})`}>
+          <text textAnchor="end" fontSize="11" fontFamily="var(--font-mono)" fill="var(--text-dim)">
+            u · x + b = 0
+          </text>
+          {solution && (
+            <>
+              <text textAnchor="end" fontSize="10" fontFamily="var(--font-mono)" fill="var(--text-dim)" y={16}>
+                margin = {(2 / vNorm(solution.w)).toFixed(3)}
+              </text>
+              <text textAnchor="end" fontSize="10" fontFamily="var(--font-mono)" fill="var(--text-dim)" y={32}>
+                {solution.history && animationProgress > 0
+                  ? `iter ${solution.history[Math.min(solution.history.length - 1,
+                      Math.floor((1 - Math.pow(1 - animationProgress, 2)) * (solution.history.length - 1)))].iter} / ${solution.history[solution.history.length - 1].iter}`
+                  : 'starting plane'}
+              </text>
+            </>
+          )}
+        </g>
+      </svg>
+    </div>
+  );
+}
+
+// ============================================================================
+// 3D SVM CANVAS
+// Uses a manual rotation + orthographic projection for full control
+// ============================================================================
+function SVMCanvas3D({
+  points,
+  setPoints,
+  classA,
+  classB,
+  feat3D,
+  initW3,
+  initB3,
+  setInitW3,
+  setInitB3,
+  isAnimating,
+  setIsAnimating,
+  animationProgress,
+  setAnimationProgress,
+  showSupportVectors,
+  onPlaneInfo,
+  tolerance,
+  marginType,
+  cValue,
+}) {
+  const svgRef = useRef(null);
+  const [yaw, setYaw] = useState(0.6);
+  const [pitch, setPitch] = useState(0.4);
+  const [draggingId, setDraggingId] = useState(null);
+  const [rotating, setRotating] = useState(false);
+  const [lastMouse, setLastMouse] = useState(null);
+  const [hoveredId, setHoveredId] = useState(null);
+
+  const W = 700;
+  const H = 560;
+
+  const filteredPoints = useMemo(
+    () => points.filter((p) => p.species === classA || p.species === classB),
+    [points, classA, classB]
+  );
+
+  // Bounds in 3D (data units)
+  const { mins, maxs } = useMemo(() => {
+    if (filteredPoints.length === 0)
+      return { mins: [0, 0, 0], maxs: [8, 8, 8] };
+    const mn = [Infinity, Infinity, Infinity];
+    const mx = [-Infinity, -Infinity, -Infinity];
+    for (const p of filteredPoints) {
+      for (let k = 0; k < 3; k++) {
+        const v = p.features[feat3D[k]];
+        if (v < mn[k]) mn[k] = v;
+        if (v > mx[k]) mx[k] = v;
+      }
+    }
+    // Pad
+    for (let k = 0; k < 3; k++) {
+      const r = mx[k] - mn[k] || 1;
+      mn[k] -= r * 0.1;
+      mx[k] += r * 0.1;
+    }
+    return { mins: mn, maxs: mx };
+  }, [filteredPoints, feat3D]);
+
+  // Solve SVM (non-blocking, with separability check + history snapshots)
+  const [solution, setSolution] = useState(null);
+  const [separable, setSeparable] = useState(true);
+  useEffect(() => {
+    if (filteredPoints.length < 2) {
+      setSolution(null);
+      setSeparable(true);
+      return;
+    }
+    const X = filteredPoints.map((p) => [
+      p.features[feat3D[0]],
+      p.features[feat3D[1]],
+      p.features[feat3D[2]],
+    ]);
+    const y = filteredPoints.map((p) => (p.species === classA ? 1 : -1));
+    const sep = checkSeparable(X, y);
+    setSeparable(sep);
+    if (marginType === "hard" && !sep) {
+      setSolution(null);
+      return;
+    }
+    const handle = requestAnimationFrame(() => {
+      setSolution(solveSVM(X, y, { snapshots: 80, tol: tolerance, C: marginType === "soft" ? cValue : Infinity }));
+    });
+    return () => cancelAnimationFrame(handle);
+  }, [filteredPoints, feat3D, classA, classB, tolerance, marginType, cValue]);
+
+  const svIds = useMemo(() => {
+    if (!solution) return new Set();
+    return new Set(solution.supportVectors.map((i) => filteredPoints[i].id));
+  }, [solution, filteredPoints]);
+  const svTypeById = useMemo(() => {
+    const m = new Map();
+    if (!solution) return m;
+    for (const i of solution.supportVectors) {
+      m.set(filteredPoints[i].id, solution.svType[i] || "margin");
+    }
+    return m;
+  }, [solution, filteredPoints]);
+
+  // Scrub through real solver history; t=0 shows user's chosen starting plane
+  const currentPlane = useMemo(() => {
+    if (!solution || !solution.history || solution.history.length < 2) {
+      return { w: initW3, b: initB3 };
+    }
+    const t = Math.max(0, Math.min(1, animationProgress));
+    if (t === 0) return { w: initW3, b: initB3 };
+    const hist = solution.history;
+    const eased = 1 - Math.pow(1 - t, 2);
+    const idx = Math.min(hist.length - 1, Math.floor(eased * (hist.length - 1)));
+    if (idx === 0) return { w: initW3, b: initB3 };
+    return { w: hist[idx].w.slice(), b: hist[idx].b };
+  }, [initW3, initB3, solution, animationProgress]);
+
+  // Report displayed plane upward for the parameter table.
+  useEffect(() => {
+    if (!onPlaneInfo) return;
+    const hist = solution && solution.history;
+    let iter = 0;
+    let totalIters = 0;
+    if (hist && hist.length > 1) {
+      totalIters = hist[hist.length - 1].iter;
+      const t = Math.max(0, Math.min(1, animationProgress));
+      if (t > 0) {
+        const eased = 1 - Math.pow(1 - t, 2);
+        const idx = Math.min(hist.length - 1, Math.floor(eased * (hist.length - 1)));
+        iter = hist[idx].iter;
+      }
+    }
+    let svCounts = null;
+    if (solution) {
+      let m = 0, s = 0;
+      for (const i of solution.supportVectors) {
+        if (solution.svType[i] === "slack") s++; else m++;
+      }
+      svCounts = { margin: m, slack: s };
+    }
+    onPlaneInfo({
+      dim: 3,
+      featNames: [FEATURE_NAMES[feat3D[0]], FEATURE_NAMES[feat3D[1]], FEATURE_NAMES[feat3D[2]]],
+      u: currentPlane.w.slice(),
+      b: currentPlane.b,
+      optimal: solution ? { u: solution.w.slice(), b: solution.b } : null,
+      margin: solution ? 2 / vNorm(solution.w) : null,
+      separable,
+      iter,
+      totalIters,
+      stopReason: solution ? solution.stopReason : null,
+      atOptimum: animationProgress >= 0.999,
+      svCounts,
+    });
+  }, [currentPlane, solution, separable, animationProgress, feat3D, onPlaneInfo]);
+
+  // Animation
+  useEffect(() => {
+    if (!isAnimating) return;
+    let raf;
+    const start = performance.now();
+    const dur = 3500;
+    const tick = () => {
+      const t = Math.min(1, (performance.now() - start) / dur);
+      setAnimationProgress(t);
+      if (t < 1) raf = requestAnimationFrame(tick);
+      else setIsAnimating(false);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [isAnimating, setAnimationProgress, setIsAnimating]);
+
+  // Convert data point to centered coords in [-1,1]^3
+  const toUnit = (p3) => {
+    return [0, 1, 2].map((k) => {
+      const span = maxs[k] - mins[k];
+      return ((p3[k] - mins[k]) / span) * 2 - 1;
+    });
+  };
+  const fromUnit = (u) => {
+    return [0, 1, 2].map((k) => mins[k] + ((u[k] + 1) / 2) * (maxs[k] - mins[k]));
+  };
+
+  // Project unit-cube coords to 2D screen via yaw/pitch
+  const project = useCallback(
+    (u) => {
+      const [x, y, z] = u;
+      const cy = Math.cos(yaw),
+        sy = Math.sin(yaw);
+      const cp = Math.cos(pitch),
+        sp = Math.sin(pitch);
+      // yaw around y-axis, then pitch around x-axis
+      const x1 = cy * x + sy * z;
+      const z1 = -sy * x + cy * z;
+      const y2 = cp * y - sp * z1;
+      const z2 = sp * y + cp * z1;
+      const scale = 180;
+      const cx = W / 2;
+      const ccy = H / 2 + 10;
+      return { sx: cx + x1 * scale, sy: ccy - y2 * scale, depth: z2 };
+    },
+    [yaw, pitch]
+  );
+
+  // Project a data point
+  const projectData = (p3) => project(toUnit(p3));
+
+  // ----- Compute the polygon for the hyperplane intersection with the unit cube -----
+  // Hyperplane in DATA space: w·x + b = c  (c = 0 for decision; ±1 for margins)
+  // Convert to UNIT-cube space: x_k = mins[k] + ((u_k+1)/2)(maxs[k]-mins[k])
+  // Substitute → linear in u with new (w', b')
+  const planeInUnit = (w, b, c = 0) => {
+    const wU = [0, 0, 0];
+    let bU = b - c;
+    for (let k = 0; k < 3; k++) {
+      const span = (maxs[k] - mins[k]) / 2;
+      wU[k] = w[k] * span;
+      bU += w[k] * (mins[k] + span); // since u=0 corresponds to mins[k]+span
+    }
+    return { w: wU, b: bU };
+  };
+
+  // Find polygon where {w·u + b = 0} intersects the cube [-1,1]^3
+  const cubeEdges = useMemo(() => {
+    const verts = [];
+    for (let i = 0; i < 8; i++) {
+      verts.push([(i & 1) ? 1 : -1, (i & 2) ? 1 : -1, (i & 4) ? 1 : -1]);
+    }
+    const edges = [];
+    for (let i = 0; i < 8; i++) {
+      for (let j = i + 1; j < 8; j++) {
+        const a = verts[i],
+          b = verts[j];
+        let diff = 0;
+        for (let k = 0; k < 3; k++) if (a[k] !== b[k]) diff++;
+        if (diff === 1) edges.push([a, b]);
+      }
+    }
+    return edges;
+  }, []);
+
+  const planePolygon = (w, b) => {
+    const f = (u) => w[0] * u[0] + w[1] * u[1] + w[2] * u[2] + b;
+    const pts = [];
+    for (const [a, c] of cubeEdges) {
+      const fa = f(a),
+        fc = f(c);
+      if (fa * fc <= 0 && Math.abs(fa - fc) > 1e-9) {
+        const t = fa / (fa - fc);
+        pts.push([a[0] + t * (c[0] - a[0]), a[1] + t * (c[1] - a[1]), a[2] + t * (c[2] - a[2])]);
+      }
+    }
+    if (pts.length < 3) return [];
+    // Order points around centroid using projection onto a basis on the plane
+    const cen = [0, 1, 2].map((k) => pts.reduce((s, p) => s + p[k], 0) / pts.length);
+    const wn = vNormalize(w);
+    // pick any vector not parallel to wn
+    const ref = Math.abs(wn[0]) > 0.9 ? [0, 1, 0] : [1, 0, 0];
+    const u1 = vNormalize(vSub(ref, vScale(wn, vDot(ref, wn))));
+    const u2 = vNormalize([
+      wn[1] * u1[2] - wn[2] * u1[1],
+      wn[2] * u1[0] - wn[0] * u1[2],
+      wn[0] * u1[1] - wn[1] * u1[0],
+    ]);
+    const angles = pts.map((p) => {
+      const d = vSub(p, cen);
+      return Math.atan2(vDot(d, u2), vDot(d, u1));
+    });
+    const ordered = pts
+      .map((p, i) => ({ p, a: angles[i] }))
+      .sort((a, b) => a.a - b.a)
+      .map((o) => o.p);
+    return ordered;
+  };
+
+  const decisionInUnit = planeInUnit(currentPlane.w, currentPlane.b, 0);
+  const decisionPoly = useMemo(
+    () => planePolygon(decisionInUnit.w, decisionInUnit.b),
+    [decisionInUnit.w, decisionInUnit.b]
+  );
+
+  const showMargins = solution && animationProgress > 0.001;
+  const margin1Unit = showMargins ? planeInUnit(currentPlane.w, currentPlane.b, 1) : null;
+  const marginM1Unit = showMargins ? planeInUnit(currentPlane.w, currentPlane.b, -1) : null;
+  const marginPoly1 = margin1Unit ? planePolygon(margin1Unit.w, margin1Unit.b) : [];
+  const marginPolyM1 = marginM1Unit ? planePolygon(marginM1Unit.w, marginM1Unit.b) : [];
+
+  // Cube edges for axis frame
+  const projectedEdges = cubeEdges.map(([a, b]) => ({
+    a: project(a),
+    b: project(b),
+  }));
+
+  // Sort points by depth so back ones render first
+  const sortedPoints = useMemo(() => {
+    return filteredPoints
+      .map((p) => {
+        const u = toUnit([p.features[feat3D[0]], p.features[feat3D[1]], p.features[feat3D[2]]]);
+        const proj = project(u);
+        return { p, proj };
+      })
+      .sort((a, b) => a.proj.depth - b.proj.depth);
+  }, [filteredPoints, feat3D, mins, maxs, project]);
+
+  // Mouse handling
+  const handleMouseDown = (e) => {
+    const rect = svgRef.current.getBoundingClientRect();
+    const px = ((e.clientX - rect.left) / rect.width) * W;
+    const py = ((e.clientY - rect.top) / rect.height) * H;
+    setLastMouse({ x: px, y: py });
+    if (draggingId === null) setRotating(true);
+  };
+
+  const handleMouseDownPoint = (e, p) => {
+    e.stopPropagation();
+    setDraggingId(p.id);
+    const rect = svgRef.current.getBoundingClientRect();
+    const px = ((e.clientX - rect.left) / rect.width) * W;
+    const py = ((e.clientY - rect.top) / rect.height) * H;
+    setLastMouse({ x: px, y: py });
+  };
+
+  const handleMouseMove = (e) => {
+    if (!svgRef.current || !lastMouse) return;
+    const rect = svgRef.current.getBoundingClientRect();
+    const px = ((e.clientX - rect.left) / rect.width) * W;
+    const py = ((e.clientY - rect.top) / rect.height) * H;
+    const dx = px - lastMouse.x;
+    const dy = py - lastMouse.y;
+
+    if (rotating && draggingId === null) {
+      setYaw((y) => y + dx * 0.008);
+      setPitch((p) => Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, p + dy * 0.008)));
+    } else if (draggingId !== null) {
+      // Drag in the screen-aligned plane: convert pixel delta to data delta
+      // Move along screen X (which mostly affects x,z in data) and screen Y (which affects y)
+      // We'll compute screen-space basis vectors mapped back to data coords.
+      // For simplicity: invert the projection by solving for movement along world axes that produces the screen delta.
+      // Use small finite differences.
+      const cur = points.find((pp) => pp.id === draggingId);
+      if (cur) {
+        const f = [...cur.features];
+        const cur3 = [f[feat3D[0]], f[feat3D[1]], f[feat3D[2]]];
+        const u = toUnit(cur3);
+        const eps = 0.01;
+        const baseProj = project(u);
+        // Build Jacobian: 3x2 (data axes -> screen)
+        const J = [[], [], []];
+        for (let k = 0; k < 3; k++) {
+          const u2 = [...u];
+          u2[k] += eps;
+          const p2 = project(u2);
+          J[k] = [(p2.sx - baseProj.sx) / eps, (p2.sy - baseProj.sy) / eps];
+        }
+        // We want to find Δu such that J^T Δu ≈ (dx, dy). Use least squares (J J^T) Δu = J·(dx,dy)
+        // J is 3x2 (rows = axes)
+        // Construct A (3x3) = J J^T, rhs = J · [dx,dy]
+        const A = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+        const rhs = [0, 0, 0];
+        for (let i = 0; i < 3; i++) {
+          for (let j = 0; j < 3; j++) {
+            A[i][j] = J[i][0] * J[j][0] + J[i][1] * J[j][1];
+          }
+          rhs[i] = J[i][0] * dx + J[i][1] * dy;
+        }
+        // Add regularization to handle rank-deficient (always rank 2)
+        for (let i = 0; i < 3; i++) A[i][i] += 0.001;
+        // Solve 3x3
+        const det =
+          A[0][0] * (A[1][1] * A[2][2] - A[1][2] * A[2][1]) -
+          A[0][1] * (A[1][0] * A[2][2] - A[1][2] * A[2][0]) +
+          A[0][2] * (A[1][0] * A[2][1] - A[1][1] * A[2][0]);
+        if (Math.abs(det) > 1e-9) {
+          const inv = [
+            [
+              (A[1][1] * A[2][2] - A[1][2] * A[2][1]) / det,
+              -(A[0][1] * A[2][2] - A[0][2] * A[2][1]) / det,
+              (A[0][1] * A[1][2] - A[0][2] * A[1][1]) / det,
+            ],
+            [
+              -(A[1][0] * A[2][2] - A[1][2] * A[2][0]) / det,
+              (A[0][0] * A[2][2] - A[0][2] * A[2][0]) / det,
+              -(A[0][0] * A[1][2] - A[0][2] * A[1][0]) / det,
+            ],
+            [
+              (A[1][0] * A[2][1] - A[1][1] * A[2][0]) / det,
+              -(A[0][0] * A[2][1] - A[0][1] * A[2][0]) / det,
+              (A[0][0] * A[1][1] - A[0][1] * A[1][0]) / det,
+            ],
+          ];
+          const du = [
+            inv[0][0] * rhs[0] + inv[0][1] * rhs[1] + inv[0][2] * rhs[2],
+            inv[1][0] * rhs[0] + inv[1][1] * rhs[1] + inv[1][2] * rhs[2],
+            inv[2][0] * rhs[0] + inv[2][1] * rhs[1] + inv[2][2] * rhs[2],
+          ];
+          // Note: dy in screen is inverted (y down). The Jacobian already accounts via project's sy = ccy - y2*scale
+          // But our delta dy from the mouse is in screen coords too (down positive), so this should work.
+          const newU = [u[0] + du[0], u[1] + du[1], u[2] + du[2]];
+          // Clip to cube
+          for (let k = 0; k < 3; k++) newU[k] = Math.max(-1.05, Math.min(1.05, newU[k]));
+          const newData = fromUnit(newU);
+          setPoints((prev) =>
+            prev.map((pp) => {
+              if (pp.id !== draggingId) return pp;
+              const nf = [...pp.features];
+              nf[feat3D[0]] = newData[0];
+              nf[feat3D[1]] = newData[1];
+              nf[feat3D[2]] = newData[2];
+              return { ...pp, features: nf };
+            })
+          );
+          if (animationProgress < 1) setAnimationProgress(1);
+        }
+      }
+    }
+    setLastMouse({ x: px, y: py });
+  };
+
+  const handleMouseUp = () => {
+    setRotating(false);
+    setDraggingId(null);
+    setLastMouse(null);
+  };
+
+  // Project + draw plane polygon
+  const drawPoly = (poly, fill, stroke, opacity = 0.18) => {
+    if (poly.length < 3) return null;
+    const pts = poly.map((u) => project(u));
+    return (
+      <polygon
+        points={pts.map((p) => `${p.sx},${p.sy}`).join(" ")}
+        fill={fill}
+        stroke={stroke}
+        strokeWidth="1.2"
+        opacity={opacity}
+      />
+    );
+  };
+
+  // Axis labels at cube corners
+  const xAxisEnd = project([1, -1, -1]);
+  const yAxisEnd = project([-1, 1, -1]);
+  const zAxisEnd = project([-1, -1, 1]);
+  const origin = project([-1, -1, -1]);
+
+  return (
+    <div style={{ position: "relative" }}>
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${W} ${H}`}
+        style={{
+          width: "100%",
+          height: "auto",
+          background: "var(--canvas-bg)",
+          borderRadius: "4px",
+          cursor: rotating ? "grabbing" : draggingId !== null ? "grabbing" : "grab",
+          userSelect: "none",
+          touchAction: "none",
+        }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      >
+        {/* Cube frame */}
+        {projectedEdges.map((e, i) => (
+          <line
+            key={i}
+            x1={e.a.sx}
+            y1={e.a.sy}
+            x2={e.b.sx}
+            y2={e.b.sy}
+            stroke="var(--grid)"
+            strokeWidth="0.7"
+            opacity="0.5"
+          />
+        ))}
+
+        {/* Axis indicators */}
+        <line x1={origin.sx} y1={origin.sy} x2={xAxisEnd.sx} y2={xAxisEnd.sy} stroke="var(--axis)" strokeWidth="1.5" />
+        <line x1={origin.sx} y1={origin.sy} x2={yAxisEnd.sx} y2={yAxisEnd.sy} stroke="var(--axis)" strokeWidth="1.5" />
+        <line x1={origin.sx} y1={origin.sy} x2={zAxisEnd.sx} y2={zAxisEnd.sy} stroke="var(--axis)" strokeWidth="1.5" />
+        <text
+          x={xAxisEnd.sx + 8}
+          y={xAxisEnd.sy + 4}
+          fontSize="11"
+          fontFamily="var(--font-display)"
+          fontStyle="italic"
+          fill="var(--text)"
+        >
+          {FEATURE_NAMES[feat3D[0]]}
+        </text>
+        <text
+          x={yAxisEnd.sx - 4}
+          y={yAxisEnd.sy - 6}
+          fontSize="11"
+          fontFamily="var(--font-display)"
+          fontStyle="italic"
+          fill="var(--text)"
+          textAnchor="end"
+        >
+          {FEATURE_NAMES[feat3D[1]]}
+        </text>
+        <text
+          x={zAxisEnd.sx - 4}
+          y={zAxisEnd.sy + 14}
+          fontSize="11"
+          fontFamily="var(--font-display)"
+          fontStyle="italic"
+          fill="var(--text)"
+          textAnchor="end"
+        >
+          {FEATURE_NAMES[feat3D[2]]}
+        </text>
+
+        {/* Margin polygons (behind decision) */}
+        {marginPolyM1.length > 0 && drawPoly(marginPolyM1, "var(--margin-fill)", "var(--margin-line)", 0.12)}
+        {marginPoly1.length > 0 && drawPoly(marginPoly1, "var(--margin-fill)", "var(--margin-line)", 0.12)}
+
+        {/* Decision plane — only when separable */}
+        {decisionPoly.length > 0 && drawPoly(decisionPoly, "var(--accent)", "var(--accent)", 0.28)}
+
+        {/* Points (depth-sorted) */}
+        {sortedPoints.map(({ p, proj }) => {
+          const isA = p.species === classA;
+          const isSV = showSupportVectors && svIds.has(p.id) && animationProgress > 0.98;
+          const svKind = isSV ? svTypeById.get(p.id) : null;
+          const isHovered = hoveredId === p.id;
+          const isDragging = draggingId === p.id;
+          // Depth-based size + opacity
+          const depthFactor = (proj.depth + 1.5) / 3; // ~0..1
+          const r = (isHovered || isDragging ? 8 : 6) * (0.7 + 0.3 * depthFactor);
+          return (
+            <g key={p.id}>
+              {isSV && svKind === "margin" && (
+                <circle
+                  cx={proj.sx} cy={proj.sy} r={r + 5}
+                  fill="none"
+                  stroke="var(--sv-ring)"
+                  strokeWidth="2"
+                  opacity="0.9"
+                />
+              )}
+              {isSV && svKind === "slack" && (
+                <circle
+                  cx={proj.sx} cy={proj.sy} r={r + 5}
+                  fill="none"
+                  stroke="var(--warn)"
+                  strokeWidth="2"
+                  strokeDasharray="3 3"
+                  opacity="0.9"
+                />
+              )}
+              <circle
+                cx={proj.sx}
+                cy={proj.sy}
+                r={r}
+                fill={isA ? "var(--class-a)" : "var(--class-b)"}
+                stroke="var(--canvas-bg)"
+                strokeWidth="1.5"
+                opacity={0.6 + 0.4 * depthFactor}
+                style={{ cursor: "grab" }}
+                onMouseDown={(e) => handleMouseDownPoint(e, p)}
+                onMouseEnter={() => setHoveredId(p.id)}
+                onMouseLeave={() => setHoveredId(null)}
+              />
+            </g>
+          );
+        })}
+
+        {/* Non-separable warning */}
+        {!separable && marginType === "hard" && (
+          <g transform={`translate(${W / 2}, ${H / 2})`}>
+            <rect x={-180} y={-40} width={360} height={80} rx={4}
+              fill="var(--canvas-bg)" stroke="var(--warn)" strokeWidth="1.5" opacity="0.95" />
+            <text textAnchor="middle" fontSize="13" fontFamily="var(--font-display)"
+              fontStyle="italic" fill="var(--warn)" y={-8}>
+              Data is not linearly separable
+            </text>
+            <text textAnchor="middle" fontSize="10" fontFamily="var(--font-mono)"
+              fill="var(--text-dim)" y={14} letterSpacing="0.5">
+              hard-margin SVM has no solution here
+            </text>
+            <text textAnchor="middle" fontSize="10" fontFamily="var(--font-mono)"
+              fill="var(--text-dim)" y={28} letterSpacing="0.5">
+              move points back, or use soft margin
+            </text>
+          </g>
+        )}
+
+        {/* Math overlay */}
+        <g transform={`translate(${W - 16}, 24)`}>
+          <text textAnchor="end" fontSize="11" fontFamily="var(--font-mono)" fill="var(--text-dim)">
+            u · x + b = 0
+          </text>
+          {solution && (
+            <>
+              <text textAnchor="end" fontSize="10" fontFamily="var(--font-mono)" fill="var(--text-dim)" y={16}>
+                margin = {(2 / vNorm(solution.w)).toFixed(3)}
+              </text>
+              <text textAnchor="end" fontSize="10" fontFamily="var(--font-mono)" fill="var(--text-dim)" y={32}>
+                {solution.history && animationProgress > 0
+                  ? `iter ${solution.history[Math.min(solution.history.length - 1,
+                      Math.floor((1 - Math.pow(1 - animationProgress, 2)) * (solution.history.length - 1)))].iter} / ${solution.history[solution.history.length - 1].iter}`
+                  : 'starting plane'}
+              </text>
+            </>
+          )}
+          <text textAnchor="end" fontSize="9" fontFamily="var(--font-mono)" fill="var(--text-dim)" y={50}>
+            drag empty space to rotate
+          </text>
+        </g>
+      </svg>
+    </div>
+  );
+}
+
+// ============================================================================
+// EDITABLE NUMERIC INPUT
+// Holds local string state while editing so partial inputs ("1." or "-")
+// don't get clobbered. Commits to parent on blur or Enter.
+// ============================================================================
+function ParamInput({ value, onCommit }) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState("");
+  const display = editing ? text : value.toFixed(4);
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      className="svm-params-input"
+      value={display}
+      onFocus={(e) => {
+        setEditing(true);
+        setText(value.toFixed(4));
+        e.target.select();
+      }}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => {
+        const v = parseFloat(text);
+        if (!Number.isNaN(v) && Math.abs(v - value) > 1e-9) onCommit(v);
+        setEditing(false);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.target.blur();
+        else if (e.key === "Escape") {
+          setText(value.toFixed(4));
+          setEditing(false);
+          e.target.blur();
+        }
+      }}
+    />
+  );
+}
+
+// ============================================================================
+// MAIN APP
+// ============================================================================
+function SVMTool() {
+  const [mode, setMode] = useState("2d");
+  const [points, setPoints] = useState(IRIS);
+  const [classA, setClassA] = useState("setosa");
+  const [classB, setClassB] = useState("versicolor");
+  const [featX, setFeatX] = useState(2); // petal length
+  const [featY, setFeatY] = useState(3); // petal width
+  const [feat3D, setFeat3D] = useState([0, 2, 3]); // SL, PL, PW
+  const [initW, setInitW] = useState([1, -1]);
+  const [initB, setInitB] = useState(-2);
+  const [initW3, setInitW3] = useState([1, -0.5, 1]);
+  const [initB3, setInitB3] = useState(-3);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [animationProgress, setAnimationProgress] = useState(0);
+  const [showSupportVectors, setShowSupportVectors] = useState(true);
+  const [tolerance, setTolerance] = useState(1e-6);
+  const [marginType, setMarginType] = useState("hard"); // "hard" | "soft"
+  const [cValue, setCValue] = useState(1.0); // soft-margin regularization
+  // Reported by the active canvas: { u: number[], b: number, optimal: {u, b} | null,
+  //   margin: number | null, separable: boolean, iter: number, totalIters: number }
+  const [planeInfo, setPlaneInfo] = useState(null);
+
+  const reset = () => {
+    setPoints(IRIS);
+    setAnimationProgress(0);
+  };
+
+  const optimize = () => {
+    setAnimationProgress(0);
+    setIsAnimating(true);
+  };
+
+  const randomizeInit = () => {
+    if (mode === "2d") {
+      const a = Math.random() * Math.PI * 2;
+      setInitW([Math.cos(a), Math.sin(a)]);
+      setInitB((Math.random() - 0.5) * 6);
+    } else {
+      const w = [Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5];
+      const n = Math.sqrt(w[0] ** 2 + w[1] ** 2 + w[2] ** 2);
+      setInitW3([w[0] / n, w[1] / n, w[2] / n]);
+      setInitB3((Math.random() - 0.5) * 6);
+    }
+    setAnimationProgress(0);
+  };
+
+  // Direct parameter editing: typing into u_i or b sets the user's
+  // chosen starting plane and snaps the slider back to "starting plane".
+  // Edit `i` is 0-based feature index, or "b" for intercept.
+  const editPlaneParam = (i, v) => {
+    if (mode === "2d") {
+      if (i === "b") setInitB(v);
+      else {
+        const next = initW.slice();
+        next[i] = v;
+        setInitW(next);
+      }
+    } else {
+      if (i === "b") setInitB3(v);
+      else {
+        const next = initW3.slice();
+        next[i] = v;
+        setInitW3(next);
+      }
+    }
+    setIsAnimating(false);
+    setAnimationProgress(0);
+  };
+
+  const speciesAvailable = ["setosa", "versicolor", "virginica"];
+
+  return (
+    <div className="svm-app">
+      <style>{`
+        :root {
+          --bg: #0d1014;
+          --panel: #151920;
+          --panel-2: #1c222c;
+          --canvas-bg: #0a0d11;
+          --border: #2a3140;
+          --text: #e8ecf2;
+          --text-dim: #8a93a3;
+          --text-muted: #5a6478;
+          --accent: #c9a961;
+          --accent-bright: #e6c97a;
+          --class-a: #6db4d8;
+          --class-b: #d87b6d;
+          --sv-ring: #f0d878;
+          --margin-line: #c9a961;
+          --margin-fill: #c9a961;
+          --warn: #d87b6d;
+          --grid: #1f2530;
+          --axis: #3d4654;
+          --font-display: 'Cormorant Garamond', 'EB Garamond', Georgia, serif;
+          --font-body: 'Inter', -apple-system, sans-serif;
+          --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+        }
+
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        .svm-app {
+          background: var(--bg);
+          color: var(--text);
+          min-height: 100vh;
+          padding: 28px;
+          font-family: var(--font-body);
+          font-size: 14px;
+          line-height: 1.5;
+          background-image: 
+            radial-gradient(circle at 20% 0%, rgba(201, 169, 97, 0.04), transparent 50%),
+            radial-gradient(circle at 80% 100%, rgba(109, 180, 216, 0.03), transparent 50%);
+        }
+
+        .svm-header {
+          max-width: 1280px;
+          margin: 0 auto 24px;
+          display: flex;
+          align-items: baseline;
+          justify-content: space-between;
+          gap: 20px;
+          flex-wrap: wrap;
+          padding-bottom: 18px;
+          border-bottom: 1px solid var(--border);
+        }
+
+        .svm-title {
+          font-family: var(--font-display);
+          font-weight: 500;
+          font-size: 32px;
+          letter-spacing: 0.5px;
+          margin: 0;
+          line-height: 1.1;
+        }
+
+        .svm-title em {
+          color: var(--accent);
+          font-style: italic;
+        }
+
+        .svm-subtitle {
+          font-family: var(--font-mono);
+          font-size: 11px;
+          color: var(--text-muted);
+          letter-spacing: 1.5px;
+          text-transform: uppercase;
+        }
+
+        .svm-layout {
+          max-width: 1280px;
+          margin: 0 auto;
+          display: grid;
+          grid-template-columns: 1fr 320px;
+          gap: 24px;
+        }
+
+        @media (max-width: 1000px) {
+          .svm-layout { grid-template-columns: 1fr; }
+        }
+
+        .svm-canvas-wrap {
+          background: var(--panel);
+          border: 1px solid var(--border);
+          border-radius: 6px;
+          padding: 16px;
+        }
+
+        .svm-controls {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+
+        .svm-panel {
+          background: var(--panel);
+          border: 1px solid var(--border);
+          border-radius: 6px;
+          padding: 18px;
+        }
+
+        .svm-panel h3 {
+          font-family: var(--font-display);
+          font-weight: 500;
+          font-size: 17px;
+          margin: 0 0 14px 0;
+          color: var(--text);
+          letter-spacing: 0.3px;
+        }
+
+        .svm-panel h3 .num {
+          font-family: var(--font-mono);
+          font-size: 10px;
+          color: var(--accent);
+          margin-right: 8px;
+          letter-spacing: 1px;
+        }
+
+        .svm-row {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+          margin-bottom: 10px;
+        }
+
+        .svm-label {
+          font-family: var(--font-mono);
+          font-size: 10px;
+          letter-spacing: 1px;
+          text-transform: uppercase;
+          color: var(--text-muted);
+          min-width: 60px;
+        }
+
+        .svm-tabs {
+          display: flex;
+          gap: 0;
+          background: var(--panel);
+          border: 1px solid var(--border);
+          border-radius: 6px;
+          overflow: hidden;
+          padding: 4px;
+        }
+        .svm-tab {
+          flex: 1;
+          background: transparent;
+          color: var(--text-dim);
+          border: none;
+          padding: 10px 12px;
+          font-family: var(--font-display);
+          font-size: 14px;
+          font-weight: 500;
+          letter-spacing: 0.3px;
+          cursor: pointer;
+          transition: all 0.18s;
+          border-radius: 4px;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          align-items: center;
+          line-height: 1.2;
+        }
+        .svm-tab:hover { color: var(--text); background: var(--panel-2); }
+        .svm-tab.active {
+          background: var(--accent);
+          color: var(--bg);
+        }
+        .svm-tab.active .svm-tab-sub { color: var(--bg); opacity: 0.7; }
+        .svm-tab-name {
+          font-family: var(--font-display);
+          font-size: 14px;
+          font-style: italic;
+        }
+        .svm-tab-sub {
+          font-family: var(--font-mono);
+          font-size: 9px;
+          color: var(--text-muted);
+          letter-spacing: 1px;
+          text-transform: uppercase;
+        }
+
+        .svm-c-panel {
+          border-color: var(--accent);
+          border-style: solid;
+          border-width: 1px;
+        }
+        .svm-c-display {
+          display: flex;
+          align-items: baseline;
+          justify-content: space-between;
+          margin-bottom: 8px;
+        }
+        .svm-c-label {
+          font-family: var(--font-mono);
+          font-size: 12px;
+          color: var(--accent);
+          font-weight: 500;
+          letter-spacing: 1px;
+        }
+        .svm-c-val {
+          font-family: var(--font-mono);
+          font-size: 18px;
+          color: var(--text);
+          font-variant-numeric: tabular-nums;
+          font-weight: 500;
+        }
+        .svm-c-scale {
+          display: flex;
+          justify-content: space-between;
+          font-family: var(--font-mono);
+          font-size: 9px;
+          color: var(--text-muted);
+          letter-spacing: 0.5px;
+          margin-top: 4px;
+        }
+        .svm-c-help {
+          font-family: var(--font-mono);
+          font-size: 9px;
+          color: var(--text-muted);
+          letter-spacing: 0.3px;
+          line-height: 1.5;
+          margin-top: 12px;
+          padding-top: 10px;
+          border-top: 1px solid var(--grid);
+        }
+
+        .svm-ring.slack {
+          border-color: var(--warn);
+          border-style: dashed;
+        }
+
+        .svm-segmented {
+          display: flex;
+          background: var(--canvas-bg);
+          border: 1px solid var(--border);
+          border-radius: 4px;
+          overflow: hidden;
+          flex: 1;
+        }
+
+        .svm-segmented button {
+          flex: 1;
+          background: transparent;
+          color: var(--text-dim);
+          border: none;
+          padding: 7px 10px;
+          font-family: var(--font-mono);
+          font-size: 11px;
+          letter-spacing: 0.5px;
+          cursor: pointer;
+          transition: all 0.15s;
+          border-right: 1px solid var(--border);
+        }
+        .svm-segmented button:last-child { border-right: none; }
+        .svm-segmented button:hover { color: var(--text); background: var(--panel-2); }
+        .svm-segmented button.active {
+          background: var(--accent);
+          color: var(--bg);
+          font-weight: 500;
+        }
+
+        .svm-select {
+          background: var(--canvas-bg);
+          color: var(--text);
+          border: 1px solid var(--border);
+          border-radius: 4px;
+          padding: 6px 10px;
+          font-family: var(--font-mono);
+          font-size: 11px;
+          flex: 1;
+          cursor: pointer;
+          transition: border-color 0.15s;
+        }
+        .svm-select:hover, .svm-select:focus {
+          border-color: var(--accent);
+          outline: none;
+        }
+
+        .svm-button {
+          background: var(--accent);
+          color: var(--bg);
+          border: none;
+          padding: 10px 16px;
+          font-family: var(--font-mono);
+          font-size: 11px;
+          letter-spacing: 1.2px;
+          text-transform: uppercase;
+          font-weight: 500;
+          cursor: pointer;
+          border-radius: 4px;
+          transition: all 0.15s;
+        }
+        .svm-button:hover { background: var(--accent-bright); transform: translateY(-1px); }
+        .svm-button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+        .svm-button.secondary {
+          background: var(--panel-2);
+          color: var(--text);
+          border: 1px solid var(--border);
+        }
+        .svm-button.secondary:hover { background: var(--canvas-bg); border-color: var(--accent); }
+
+        .svm-button-row {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+
+        .svm-slider {
+          width: 100%;
+          margin-top: 6px;
+          -webkit-appearance: none;
+          appearance: none;
+          height: 4px;
+          background: var(--canvas-bg);
+          border-radius: 2px;
+          outline: none;
+        }
+        .svm-slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          width: 14px;
+          height: 14px;
+          background: var(--accent);
+          border-radius: 50%;
+          cursor: grab;
+          border: 2px solid var(--bg);
+        }
+        .svm-slider::-moz-range-thumb {
+          width: 14px;
+          height: 14px;
+          background: var(--accent);
+          border-radius: 50%;
+          cursor: grab;
+          border: 2px solid var(--bg);
+        }
+
+        .svm-slider-label {
+          display: flex;
+          justify-content: space-between;
+          font-family: var(--font-mono);
+          font-size: 10px;
+          color: var(--text-dim);
+          margin-bottom: 4px;
+        }
+
+        .svm-checkbox {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          cursor: pointer;
+          font-family: var(--font-mono);
+          font-size: 11px;
+          color: var(--text-dim);
+        }
+        .svm-checkbox input { accent-color: var(--accent); }
+
+        .svm-legend {
+          display: flex;
+          gap: 14px;
+          font-family: var(--font-mono);
+          font-size: 10px;
+          color: var(--text-dim);
+          flex-wrap: wrap;
+          margin-top: 10px;
+          padding-top: 10px;
+          border-top: 1px solid var(--border);
+        }
+        .svm-legend-item { display: flex; align-items: center; gap: 6px; }
+        .svm-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .svm-ring {
+          width: 12px; height: 12px; border-radius: 50%;
+          border: 2px solid var(--sv-ring); box-sizing: border-box;
+        }
+
+        .svm-params-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-family: var(--font-mono);
+          font-size: 11px;
+        }
+        .svm-params-table thead th {
+          color: var(--text-muted);
+          font-weight: 400;
+          font-size: 9px;
+          letter-spacing: 1.2px;
+          text-transform: uppercase;
+          text-align: right;
+          padding: 0 0 8px 0;
+          border-bottom: 1px solid var(--border);
+        }
+        .svm-params-table thead th:first-child { text-align: left; }
+        .svm-params-table tbody td {
+          padding: 6px 0;
+          border-bottom: 1px solid var(--grid);
+        }
+        .svm-params-table tbody tr:last-child td { border-bottom: none; }
+        .svm-params-table tr.svm-params-divider td {
+          border-top: 1px solid var(--border);
+          padding-top: 9px;
+        }
+        .svm-params-name {
+          display: flex;
+          align-items: baseline;
+          gap: 8px;
+        }
+        .svm-params-sym {
+          color: var(--accent);
+          font-weight: 500;
+          min-width: 32px;
+          display: inline-block;
+        }
+        .svm-params-sym sub {
+          font-size: 8px;
+          color: var(--text-muted);
+        }
+        .svm-params-feat {
+          color: var(--text-muted);
+          font-size: 9px;
+          letter-spacing: 0.5px;
+        }
+        .svm-params-val {
+          text-align: right;
+          color: var(--text);
+          font-variant-numeric: tabular-nums;
+          padding-left: 12px;
+        }
+        .svm-params-val.opt {
+          color: var(--text-dim);
+        }
+        .svm-params-val.readonly {
+          color: var(--text-muted);
+          font-style: italic;
+        }
+        .svm-params-input {
+          width: 100%;
+          background: var(--canvas-bg);
+          border: 1px solid var(--grid);
+          border-radius: 3px;
+          color: var(--text);
+          font-family: var(--font-mono);
+          font-size: 11px;
+          font-variant-numeric: tabular-nums;
+          text-align: right;
+          padding: 3px 6px;
+          outline: none;
+          transition: border-color 0.15s, background 0.15s;
+        }
+        .svm-params-input:hover {
+          border-color: var(--border);
+        }
+        .svm-params-input:focus {
+          border-color: var(--accent);
+          background: var(--bg);
+        }
+        .svm-params-iter {
+          margin-top: 12px;
+          padding-top: 10px;
+          border-top: 1px solid var(--grid);
+          font-family: var(--font-mono);
+          font-size: 10px;
+          color: var(--text-muted);
+          text-align: center;
+          letter-spacing: 0.5px;
+        }
+        .svm-params-empty {
+          font-family: var(--font-display);
+          font-style: italic;
+          color: var(--text-dim);
+          font-size: 13px;
+          padding: 8px 0;
+        }
+
+        .svm-tip {
+          font-family: var(--font-display);
+          font-size: 13px;
+          font-style: italic;
+          color: var(--text-dim);
+          line-height: 1.5;
+          padding: 12px 14px;
+          background: var(--canvas-bg);
+          border-left: 2px solid var(--accent);
+          border-radius: 2px;
+          margin-top: 12px;
+        }
+
+        .svm-tip strong {
+          color: var(--accent);
+          font-style: normal;
+          font-family: var(--font-mono);
+          font-size: 10px;
+          letter-spacing: 1px;
+          text-transform: uppercase;
+          display: block;
+          margin-bottom: 4px;
+        }
+
+        .feat-mini {
+          display: grid;
+          grid-template-columns: auto 1fr;
+          gap: 6px 10px;
+          align-items: center;
+        }
+      `}</style>
+
+      <div className="svm-header">
+        <div>
+          <h1 className="svm-title">
+            The <em>Maximal Margin</em> Classifier
+          </h1>
+          <div className="svm-subtitle">interactive — iris dataset — hard-margin SVM</div>
+        </div>
+      </div>
+
+      <div className="svm-layout">
+        <div className="svm-canvas-wrap">
+          {mode === "2d" ? (
+            <SVMCanvas2D
+              points={points}
+              setPoints={setPoints}
+              classA={classA}
+              classB={classB}
+              featX={featX}
+              featY={featY}
+              initW={initW}
+              initB={initB}
+              setInitW={setInitW}
+              setInitB={setInitB}
+              isAnimating={isAnimating}
+              setIsAnimating={setIsAnimating}
+              animationProgress={animationProgress}
+              setAnimationProgress={setAnimationProgress}
+              showSupportVectors={showSupportVectors}
+              onPlaneInfo={setPlaneInfo}
+              tolerance={tolerance}
+              marginType={marginType}
+              cValue={cValue}
+            />
+          ) : (
+            <SVMCanvas3D
+              points={points}
+              setPoints={setPoints}
+              classA={classA}
+              classB={classB}
+              feat3D={feat3D}
+              initW3={initW3}
+              initB3={initB3}
+              setInitW3={setInitW3}
+              setInitB3={setInitB3}
+              isAnimating={isAnimating}
+              setIsAnimating={setIsAnimating}
+              animationProgress={animationProgress}
+              setAnimationProgress={setAnimationProgress}
+              showSupportVectors={showSupportVectors}
+              onPlaneInfo={setPlaneInfo}
+              tolerance={tolerance}
+              marginType={marginType}
+              cValue={cValue}
+            />
+          )}
+          <div className="svm-legend">
+            <div className="svm-legend-item">
+              <div className="svm-dot" style={{ background: "var(--class-a)" }} />
+              <span>{classA}</span>
+            </div>
+            <div className="svm-legend-item">
+              <div className="svm-dot" style={{ background: "var(--class-b)" }} />
+              <span>{classB}</span>
+            </div>
+            <div className="svm-legend-item">
+              <div className="svm-ring" />
+              <span>{marginType === "soft" ? "margin SV" : "support vector"}</span>
+            </div>
+            {marginType === "soft" && (
+              <div className="svm-legend-item">
+                <div className="svm-ring slack" />
+                <span>slack SV</span>
+              </div>
+            )}
+            <div className="svm-legend-item" style={{ marginLeft: "auto", color: "var(--text-muted)" }}>
+              drag points to perturb the data
+            </div>
+          </div>
+        </div>
+
+        <div className="svm-controls">
+          <div className="svm-tabs">
+            <button
+              className={`svm-tab ${marginType === "hard" ? "active" : ""}`}
+              onClick={() => { setMarginType("hard"); setAnimationProgress(0); }}
+            >
+              <span className="svm-tab-name">Maximal Margin</span>
+              <span className="svm-tab-sub">hard · C → ∞</span>
+            </button>
+            <button
+              className={`svm-tab ${marginType === "soft" ? "active" : ""}`}
+              onClick={() => { setMarginType("soft"); setAnimationProgress(0); }}
+            >
+              <span className="svm-tab-name">Soft Margin</span>
+              <span className="svm-tab-sub">slack · finite C</span>
+            </button>
+          </div>
+
+          {marginType === "soft" && (
+            <div className="svm-panel svm-c-panel">
+              <h3>
+                <span className="num">·</span>REGULARIZATION
+              </h3>
+              <div className="svm-c-display">
+                <span className="svm-c-label">C</span>
+                <span className="svm-c-val">{cValue >= 100 ? cValue.toFixed(0) : cValue >= 10 ? cValue.toFixed(1) : cValue.toFixed(3)}</span>
+              </div>
+              <input
+                type="range"
+                className="svm-slider"
+                min={Math.log10(0.01)}
+                max={Math.log10(1000)}
+                step={0.01}
+                value={Math.log10(cValue)}
+                onChange={(e) => setCValue(Math.pow(10, parseFloat(e.target.value)))}
+              />
+              <div className="svm-c-scale">
+                <span>0.01</span>
+                <span>1</span>
+                <span>1000</span>
+              </div>
+              <div className="svm-c-help">
+                <span style={{ color: "var(--text-dim)" }}>low C →</span> wide margin, more slack ·
+                <span style={{ color: "var(--text-dim)" }}> high C →</span> tight margin, fewer violations
+              </div>
+            </div>
+          )}
+
+          <div className="svm-panel">
+            <h3>
+              <span className="num">01</span>VIEW
+            </h3>
+            <div className="svm-row">
+              <div className="svm-segmented">
+                <button className={mode === "2d" ? "active" : ""} onClick={() => { setMode("2d"); setAnimationProgress(0); }}>
+                  2D
+                </button>
+                <button className={mode === "3d" ? "active" : ""} onClick={() => { setMode("3d"); setAnimationProgress(0); }}>
+                  3D
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="svm-panel">
+            <h3>
+              <span className="num">02</span>CLASSES
+            </h3>
+            <div className="svm-row">
+              <span className="svm-label">A (+)</span>
+              <select
+                className="svm-select"
+                value={classA}
+                onChange={(e) => {
+                  setClassA(e.target.value);
+                  setAnimationProgress(0);
+                }}
+              >
+                {speciesAvailable.filter((s) => s !== classB).map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+            <div className="svm-row">
+              <span className="svm-label">B (−)</span>
+              <select
+                className="svm-select"
+                value={classB}
+                onChange={(e) => {
+                  setClassB(e.target.value);
+                  setAnimationProgress(0);
+                }}
+              >
+                {speciesAvailable.filter((s) => s !== classA).map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="svm-panel">
+            <h3>
+              <span className="num">03</span>FEATURES
+            </h3>
+            {mode === "2d" ? (
+              <>
+                <div className="svm-row">
+                  <span className="svm-label">X</span>
+                  <select
+                    className="svm-select"
+                    value={featX}
+                    onChange={(e) => { setFeatX(parseInt(e.target.value)); setAnimationProgress(0); }}
+                  >
+                    {FEATURE_NAMES.map((n, i) => (
+                      <option key={i} value={i} disabled={i === featY}>{n}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="svm-row">
+                  <span className="svm-label">Y</span>
+                  <select
+                    className="svm-select"
+                    value={featY}
+                    onChange={(e) => { setFeatY(parseInt(e.target.value)); setAnimationProgress(0); }}
+                  >
+                    {FEATURE_NAMES.map((n, i) => (
+                      <option key={i} value={i} disabled={i === featX}>{n}</option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            ) : (
+              <div className="feat-mini">
+                {["X", "Y", "Z"].map((axis, k) => (
+                  <React.Fragment key={k}>
+                    <span className="svm-label">{axis}</span>
+                    <select
+                      className="svm-select"
+                      value={feat3D[k]}
+                      onChange={(e) => {
+                        const nf = [...feat3D];
+                        nf[k] = parseInt(e.target.value);
+                        setFeat3D(nf);
+                        setAnimationProgress(0);
+                      }}
+                    >
+                      {FEATURE_NAMES.map((n, i) => (
+                        <option key={i} value={i} disabled={feat3D.includes(i) && feat3D[k] !== i}>{n}</option>
+                      ))}
+                    </select>
+                  </React.Fragment>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="svm-panel">
+            <h3>
+              <span className="num">04</span>OPTIMIZE
+            </h3>
+            <div className="svm-button-row">
+              <button className="svm-button" onClick={optimize} disabled={isAnimating}>
+                Animate
+              </button>
+              <button className="svm-button secondary" onClick={randomizeInit}>
+                Randomize Start
+              </button>
+            </div>
+            <div className="svm-slider-label" style={{ marginTop: 14 }}>
+              <span>iter 0</span>
+              <span style={{ color: "var(--accent)" }}>{(animationProgress * 100).toFixed(0)}%</span>
+              <span>converged</span>
+            </div>
+            <input
+              type="range"
+              className="svm-slider"
+              min="0"
+              max="1"
+              step="0.005"
+              value={animationProgress}
+              onChange={(e) => {
+                setIsAnimating(false);
+                setAnimationProgress(parseFloat(e.target.value));
+              }}
+            />
+            <div className="svm-row" style={{ marginTop: 14, marginBottom: 0 }}>
+              <span className="svm-label">tol</span>
+              <select
+                className="svm-select"
+                value={tolerance}
+                onChange={(e) => setTolerance(parseFloat(e.target.value))}
+                title="Early stopping: relative dual-objective gain threshold"
+              >
+                <option value={1e-3}>1e−3 (fast)</option>
+                <option value={1e-4}>1e−4</option>
+                <option value={1e-5}>1e−5</option>
+                <option value={1e-6}>1e−6 (default)</option>
+                <option value={1e-7}>1e−7</option>
+                <option value={0}>0 (no early stop)</option>
+              </select>
+            </div>
+            <label className="svm-checkbox" style={{ marginTop: 14 }}>
+              <input
+                type="checkbox"
+                checked={showSupportVectors}
+                onChange={(e) => setShowSupportVectors(e.target.checked)}
+              />
+              <span>highlight support vectors</span>
+            </label>
+          </div>
+
+          <div className="svm-panel">
+            <h3>
+              <span className="num">05</span>PARAMETERS
+            </h3>
+            {!planeInfo ? (
+              <div className="svm-params-empty">computing…</div>
+            ) : !planeInfo.optimal && marginType === "hard" && !planeInfo.separable ? (
+              <div className="svm-params-empty">no MMC — data not separable</div>
+            ) : !planeInfo.optimal ? (
+              <div className="svm-params-empty">computing…</div>
+            ) : (
+              <table className="svm-params-table">
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>current</th>
+                    <th>optimal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {planeInfo.featNames.map((name, i) => (
+                    <tr key={i}>
+                      <td className="svm-params-name">
+                        <span className="svm-params-sym">u<sub>{i + 1}</sub></span>
+                        <span className="svm-params-feat">{name}</span>
+                      </td>
+                      <td className="svm-params-val">
+                        <ParamInput
+                          value={planeInfo.u[i]}
+                          onCommit={(v) => editPlaneParam(i, v)}
+                        />
+                      </td>
+                      <td className="svm-params-val opt">
+                        {planeInfo.optimal ? planeInfo.optimal.u[i].toFixed(4) : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="svm-params-divider">
+                    <td className="svm-params-name">
+                      <span className="svm-params-sym">b</span>
+                      <span className="svm-params-feat">intercept</span>
+                    </td>
+                    <td className="svm-params-val">
+                      <ParamInput
+                        value={planeInfo.b}
+                        onCommit={(v) => editPlaneParam("b", v)}
+                      />
+                    </td>
+                    <td className="svm-params-val opt">
+                      {planeInfo.optimal ? planeInfo.optimal.b.toFixed(4) : "—"}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="svm-params-name">
+                      <span className="svm-params-sym">‖u‖</span>
+                      <span className="svm-params-feat">norm</span>
+                    </td>
+                    <td className="svm-params-val readonly">{vNorm(planeInfo.u).toFixed(4)}</td>
+                    <td className="svm-params-val opt">
+                      {planeInfo.optimal ? vNorm(planeInfo.optimal.u).toFixed(4) : "—"}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="svm-params-name">
+                      <span className="svm-params-sym">2/‖u‖</span>
+                      <span className="svm-params-feat">margin</span>
+                    </td>
+                    <td className="svm-params-val readonly">
+                      {vNorm(planeInfo.u) > 1e-9 ? (2 / vNorm(planeInfo.u)).toFixed(4) : "—"}
+                    </td>
+                    <td className="svm-params-val opt">
+                      {planeInfo.margin != null ? planeInfo.margin.toFixed(4) : "—"}
+                    </td>
+                  </tr>
+                  {marginType === "soft" && (
+                    <tr className="svm-params-divider">
+                      <td className="svm-params-name">
+                        <span className="svm-params-sym">C</span>
+                        <span className="svm-params-feat">regularization</span>
+                      </td>
+                      <td className="svm-params-val readonly" colSpan={2}>
+                        {cValue >= 100 ? cValue.toFixed(0) : cValue >= 10 ? cValue.toFixed(2) : cValue.toFixed(3)}
+                      </td>
+                    </tr>
+                  )}
+                  {marginType === "soft" && planeInfo.svCounts && (
+                    <>
+                      <tr>
+                        <td className="svm-params-name">
+                          <span className="svm-params-sym" style={{ color: "var(--sv-ring)" }}>●</span>
+                          <span className="svm-params-feat">margin SVs</span>
+                        </td>
+                        <td className="svm-params-val readonly" colSpan={2}>
+                          {planeInfo.svCounts.margin}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="svm-params-name">
+                          <span className="svm-params-sym" style={{ color: "var(--warn)" }}>●</span>
+                          <span className="svm-params-feat">slack SVs</span>
+                        </td>
+                        <td className="svm-params-val readonly" colSpan={2}>
+                          {planeInfo.svCounts.slack}
+                        </td>
+                      </tr>
+                    </>
+                  )}
+                </tbody>
+              </table>
+            )}
+            {planeInfo && planeInfo.optimal && planeInfo.totalIters > 0 && (
+              <div className="svm-params-iter">
+                {planeInfo.iter === 0
+                  ? "starting plane (user-chosen)"
+                  : planeInfo.atOptimum && planeInfo.stopReason === "converged"
+                    ? `converged at iter ${planeInfo.totalIters}`
+                    : planeInfo.atOptimum
+                      ? `stopped at iter ${planeInfo.totalIters} (max)`
+                      : `solver iter ${planeInfo.iter} / ${planeInfo.totalIters}`}
+              </div>
+            )}
+          </div>
+
+          <div className="svm-panel">
+            <h3>
+              <span className="num">06</span>RESET
+            </h3>
+            <button className="svm-button secondary" onClick={reset} style={{ width: "100%" }}>
+              Restore Original Iris Data
+            </button>
+          </div>
+
+          <div className="svm-tip">
+            <strong>Try this</strong>
+            {marginType === "hard"
+              ? "Animate to the optimum, then drag a non-support-vector point — the boundary doesn't move (as long as the point stays on its side of its margin line). Now drag a support vector and the whole thing re-optimizes."
+              : "Pick versicolor + virginica (which overlap), then sweep C from 0.01 to 1000 and watch the margin tighten as the slack SVs vanish. At low C the boundary tolerates many violations; at high C it fights to classify everything."}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<SVMTool />);
+</script>
+</body>
+</html>

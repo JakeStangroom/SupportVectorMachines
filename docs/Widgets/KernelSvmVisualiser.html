@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kernel SVM Explorer</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #0d1014; }
+  #root { min-height: 100vh; }
+</style>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useRef, useMemo } = React;
+
+
+// ============================================================================
+// LINEAR ALGEBRA + RANDOM HELPERS
+// ============================================================================
+const vDot = (a, b) => { let s = 0; for (let i = 0; i < a.length; i++) s += a[i] * b[i]; return s; };
+const sqDist = (a, b) => { let s = 0; for (let i = 0; i < a.length; i++) { const d = a[i] - b[i]; s += d * d; } return s; };
+
+// Seedable PRNG — same seed always gives same dataset, so the widget is
+// deterministic across reloads.
+function rng(seed) {
+  let s = seed >>> 0;
+  return () => { s = (s * 1103515245 + 12345) >>> 0; return ((s >>> 16) & 0x7fff) / 0x7fff; };
+}
+function gauss(rand) {
+  const u = Math.max(1e-12, rand());
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rand());
+}
+
+// ============================================================================
+// DATASETS
+// ============================================================================
+function makeMoons(seed = 42) {
+  const r = rng(seed);
+  const n = 90;
+  const pts = [];
+  let id = 0;
+  for (let i = 0; i < n; i++) {
+    const a = Math.PI * r();
+    pts.push({ id: id++, features: [Math.cos(a) + 0.09 * gauss(r), Math.sin(a) + 0.09 * gauss(r)], label: 1 });
+  }
+  for (let i = 0; i < n; i++) {
+    const a = Math.PI * r();
+    pts.push({ id: id++, features: [1 - Math.cos(a) + 0.09 * gauss(r), 0.45 - Math.sin(a) + 0.09 * gauss(r)], label: -1 });
+  }
+  return { points: pts, xRange: [-1.5, 2.5], yRange: [-1.5, 1.5] };
+}
+
+function makeCircles(seed = 42) {
+  const r = rng(seed);
+  const nInner = 60, nOuter = 120;
+  const pts = [];
+  let id = 0;
+  for (let i = 0; i < nInner; i++) {
+    const a = 2 * Math.PI * r();
+    const rad = 0.35 + 0.06 * gauss(r);
+    pts.push({ id: id++, features: [rad * Math.cos(a), rad * Math.sin(a)], label: 1 });
+  }
+  for (let i = 0; i < nOuter; i++) {
+    const a = 2 * Math.PI * r();
+    const rad = 1.0 + 0.06 * gauss(r);
+    pts.push({ id: id++, features: [rad * Math.cos(a), rad * Math.sin(a)], label: -1 });
+  }
+  return { points: pts, xRange: [-1.5, 1.5], yRange: [-1.5, 1.5] };
+}
+
+function makeXOR(seed = 42) {
+  const r = rng(seed);
+  const n = 45;
+  const pts = [];
+  let id = 0;
+  for (let i = 0; i < n; i++) pts.push({ id: id++, features: [0.6 + 0.18 * gauss(r), 0.6 + 0.18 * gauss(r)], label: 1 });
+  for (let i = 0; i < n; i++) pts.push({ id: id++, features: [-0.6 + 0.18 * gauss(r), -0.6 + 0.18 * gauss(r)], label: 1 });
+  for (let i = 0; i < n; i++) pts.push({ id: id++, features: [-0.6 + 0.18 * gauss(r), 0.6 + 0.18 * gauss(r)], label: -1 });
+  for (let i = 0; i < n; i++) pts.push({ id: id++, features: [0.6 + 0.18 * gauss(r), -0.6 + 0.18 * gauss(r)], label: -1 });
+  return { points: pts, xRange: [-1.5, 1.5], yRange: [-1.5, 1.5] };
+}
+
+const DATASET_FACTORIES = {
+  moons: { make: makeMoons, label: "Moons", desc: "Two interlocking crescents" },
+  circles: { make: makeCircles, label: "Concentric Circles", desc: "Radial separation" },
+  xor: { make: makeXOR, label: "XOR Quadrants", desc: "Diagonal symmetry" },
+};
+
+// ============================================================================
+// KERNELS
+// ============================================================================
+function makeKernel(type, params) {
+  if (type === "rbf") {
+    const g = params.gamma;
+    return (x, y) => Math.exp(-g * sqDist(x, y));
+  }
+  if (type === "poly") {
+    const { gamma: g, coef0: r, degree: d } = params;
+    return (x, y) => Math.pow(g * vDot(x, y) + r, d);
+  }
+  if (type === "sigmoid") {
+    const { gamma: g, coef0: r } = params;
+    return (x, y) => Math.tanh(g * vDot(x, y) + r);
+  }
+  throw new Error("unknown kernel: " + type);
+}
+
+const KERNEL_DEFAULTS = {
+  rbf: { gamma: 2 },
+  poly: { gamma: 1, coef0: 1, degree: 3 },
+  sigmoid: { gamma: 1, coef0: -1 },
+};
+
+// ============================================================================
+// SOFT-MARGIN KERNEL SVM SOLVER
+//   max_α  Σ α_i − ½ Σ α_i α_j y_i y_j K(x_i, x_j)
+//   s.t.   0 ≤ α_i ≤ C,  Σ α_i y_i = 0
+// Solved by projected gradient ascent.
+//
+// Critical: the optimal step size for projected gradient ascent on this
+// quadratic problem is bounded by the Lipschitz constant of the gradient,
+// which equals the spectral radius of the Gram matrix Q (where Q_ij = y_i y_j K_ij).
+// Different kernels produce wildly different Q magnitudes — RBF has |K| ≤ 1
+// but high-degree polynomial can have |K| in the thousands. A fixed lr like
+// 0.01 over-shoots badly for poly kernels and causes the solver to "converge"
+// to a non-optimal point. We estimate λ_max(Q) by power iteration and set
+// lr ≈ 1.8/λ_max (just under the 2/L stability bound).
+// ============================================================================
+function solveKernelSVM(points, kernelFn, opts = {}) {
+  const { iters = 8000, tol = 1e-4, patience = 5, checkEvery = 100, C = 10, lrMul = 1.8 } = opts;
+  const n = points.length;
+  if (n === 0) return null;
+  const X = points.map((p) => p.features);
+  const y = points.map((p) => p.label);
+
+  const K = [];
+  for (let i = 0; i < n; i++) {
+    K.push(new Array(n));
+    for (let j = 0; j < n; j++) K[i][j] = y[i] * y[j] * kernelFn(X[i], X[j]);
+  }
+
+  // Power iteration to estimate λ_max(K). 30 iters is plenty for moderate-size
+  // matrices; we just need an upper-bound estimate, not high precision.
+  let v = new Array(n).fill(1 / Math.sqrt(n));
+  let lambda = 1;
+  for (let it = 0; it < 30; it++) {
+    const w = new Array(n).fill(0);
+    for (let i = 0; i < n; i++) {
+      let s = 0;
+      for (let j = 0; j < n; j++) s += K[i][j] * v[j];
+      w[i] = s;
+    }
+    let norm = 0;
+    for (const x of w) norm += x * x;
+    norm = Math.sqrt(norm);
+    if (norm < 1e-12) break;
+    lambda = norm;
+    for (let i = 0; i < n; i++) v[i] = w[i] / norm;
+  }
+  const L = Math.max(1e-6, lambda);
+  const lr = opts.lr ?? Math.min(1.0, lrMul / L);
+
+  const alpha = new Array(n).fill(0);
+  const dualObj = () => {
+    let s = 0, q = 0;
+    for (let i = 0; i < n; i++) s += alpha[i];
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) q += alpha[i] * alpha[j] * K[i][j];
+    return s - 0.5 * q;
+  };
+
+  let prevObj = -Infinity, stagnant = 0, stoppedAt = iters, stopReason = "maxIters";
+
+  for (let it = 1; it <= iters; it++) {
+    const g = new Array(n);
+    for (let i = 0; i < n; i++) {
+      let s = 0;
+      for (let j = 0; j < n; j++) s += alpha[j] * K[i][j];
+      g[i] = 1 - s;
+    }
+    for (let i = 0; i < n; i++) alpha[i] += lr * g[i];
+    for (let i = 0; i < n; i++) {
+      if (alpha[i] < 0) alpha[i] = 0;
+      else if (alpha[i] > C) alpha[i] = C;
+    }
+    let sumAy = 0, active = 0;
+    for (let i = 0; i < n; i++) if (alpha[i] > 0 && alpha[i] < C) { sumAy += alpha[i] * y[i]; active++; }
+    if (active > 0) {
+      const adj = sumAy / active;
+      for (let i = 0; i < n; i++) if (alpha[i] > 0 && alpha[i] < C) {
+        alpha[i] -= adj * y[i];
+        if (alpha[i] < 0) alpha[i] = 0;
+        else if (alpha[i] > C) alpha[i] = C;
+      }
+    }
+    if (it % checkEvery === 0) {
+      const obj = dualObj();
+      const rel = (obj - prevObj) / Math.max(Math.abs(obj), 1e-9);
+      if (rel < tol) {
+        stagnant++;
+        if (stagnant >= patience) { stoppedAt = it; stopReason = "converged"; break; }
+      } else {
+        stagnant = 0;
+      }
+      prevObj = obj;
+    }
+  }
+
+  const Ceps = isFinite(C) ? C - 1e-6 : Infinity;
+  const marginSV = [], slackSV = [];
+  for (let i = 0; i < n; i++) {
+    if (alpha[i] > 1e-6) {
+      if (alpha[i] >= Ceps) slackSV.push(i);
+      else marginSV.push(i);
+    }
+  }
+
+  let b = 0;
+  const useForB = marginSV.length > 0 ? marginSV : slackSV;
+  if (useForB.length > 0) {
+    for (const s of useForB) {
+      let f = 0;
+      for (let i = 0; i < n; i++) {
+        if (alpha[i] > 1e-9) f += alpha[i] * y[i] * kernelFn(X[i], X[s]);
+      }
+      b += y[s] - f;
+    }
+    b /= useForB.length;
+  }
+
+  const svActive = [];
+  for (let i = 0; i < n; i++) if (alpha[i] > 1e-9) svActive.push(i);
+
+  const decide = (x) => {
+    let f = b;
+    for (const i of svActive) f += alpha[i] * y[i] * kernelFn(X[i], x);
+    return f;
+  };
+
+  const supportVectors = marginSV.concat(slackSV);
+  const svType = {};
+  for (const i of marginSV) svType[i] = "margin";
+  for (const i of slackSV) svType[i] = "slack";
+
+  let correct = 0;
+  for (let i = 0; i < n; i++) if (Math.sign(decide(X[i])) === y[i]) correct++;
+
+  return {
+    alpha, b, decide, supportVectors, svType,
+    marginSVCount: marginSV.length, slackSVCount: slackSV.length,
+    correct, total: n,
+    stoppedAt, stopReason,
+  };
+}
+
+// ============================================================================
+// MARCHING SQUARES
+// ============================================================================
+function marchingSquares(Z, nx, ny, level, xMin, xMax, yMin, yMax) {
+  const segs = [];
+  const xAt = (i) => xMin + (xMax - xMin) * i / (nx - 1);
+  const yAt = (j) => yMin + (yMax - yMin) * j / (ny - 1);
+  for (let j = 0; j < ny - 1; j++) {
+    for (let i = 0; i < nx - 1; i++) {
+      const v00 = Z[j * nx + i] - level;
+      const v10 = Z[j * nx + (i + 1)] - level;
+      const v01 = Z[(j + 1) * nx + i] - level;
+      const v11 = Z[(j + 1) * nx + (i + 1)] - level;
+      const idx = (v00 >= 0 ? 1 : 0) | (v10 >= 0 ? 2 : 0) | (v11 >= 0 ? 4 : 0) | (v01 >= 0 ? 8 : 0);
+      if (idx === 0 || idx === 15) continue;
+      const lerp = (va, vb, ax, ay, bx, by) => {
+        const t = va / (va - vb);
+        return [ax + t * (bx - ax), ay + t * (by - ay)];
+      };
+      const x0 = xAt(i), x1 = xAt(i + 1), y0 = yAt(j), y1 = yAt(j + 1);
+      const B = () => lerp(v00, v10, x0, y0, x1, y0);
+      const R = () => lerp(v10, v11, x1, y0, x1, y1);
+      const T = () => lerp(v01, v11, x0, y1, x1, y1);
+      const L = () => lerp(v00, v01, x0, y0, x0, y1);
+      switch (idx) {
+        case 1: case 14: segs.push([B(), L()]); break;
+        case 2: case 13: segs.push([B(), R()]); break;
+        case 3: case 12: segs.push([L(), R()]); break;
+        case 4: case 11: segs.push([R(), T()]); break;
+        case 5: segs.push([B(), R()], [L(), T()]); break;
+        case 6: case 9: segs.push([B(), T()]); break;
+        case 7: case 8: segs.push([L(), T()]); break;
+        case 10: segs.push([B(), L()], [R(), T()]); break;
+      }
+    }
+  }
+  return segs;
+}
+
+// ============================================================================
+// 2D KERNEL SVM CANVAS
+// ============================================================================
+function KernelSVMCanvas({
+  points, setPoints, xRange, yRange,
+  solution, isSolving,
+  showDecisionRegion, showMargins, showSupportVectors,
+  gridSize,
+}) {
+  const svgRef = useRef(null);
+  const [draggingId, setDraggingId] = useState(null);
+  const [hoveredId, setHoveredId] = useState(null);
+
+  const W = 640, H = 560, PAD = 36;
+  const [xMin, xMax] = xRange;
+  const [yMin, yMax] = yRange;
+  const x2px = (x) => PAD + ((x - xMin) / (xMax - xMin)) * (W - 2 * PAD);
+  const y2px = (y) => H - PAD - ((y - yMin) / (yMax - yMin)) * (H - 2 * PAD);
+  const px2x = (px) => xMin + ((px - PAD) / (W - 2 * PAD)) * (xMax - xMin);
+  const py2y = (py) => yMin + ((H - PAD - py) / (H - 2 * PAD)) * (yMax - yMin);
+
+  const svTypeById = useMemo(() => {
+    const m = new Map();
+    if (!solution) return m;
+    for (const i of solution.supportVectors) m.set(points[i].id, solution.svType[i] || "margin");
+    return m;
+  }, [solution, points]);
+
+  // Evaluate decision function on a grid
+  const grid = useMemo(() => {
+    if (!solution) return null;
+    const nx = gridSize;
+    const ny = Math.max(20, Math.round(gridSize * (H - 2 * PAD) / (W - 2 * PAD)));
+    const Z = new Array(nx * ny);
+    for (let j = 0; j < ny; j++) {
+      const py = yMin + (yMax - yMin) * j / (ny - 1);
+      for (let i = 0; i < nx; i++) {
+        const px = xMin + (xMax - xMin) * i / (nx - 1);
+        Z[j * nx + i] = solution.decide([px, py]);
+      }
+    }
+    return { Z, nx, ny };
+  }, [solution, xMin, xMax, yMin, yMax, gridSize]);
+
+  const contours = useMemo(() => {
+    if (!grid) return null;
+    const { Z, nx, ny } = grid;
+    return {
+      decision: marchingSquares(Z, nx, ny, 0, xMin, xMax, yMin, yMax),
+      marginPos: marchingSquares(Z, nx, ny, 1, xMin, xMax, yMin, yMax),
+      marginNeg: marchingSquares(Z, nx, ny, -1, xMin, xMax, yMin, yMax),
+    };
+  }, [grid, xMin, xMax, yMin, yMax]);
+
+  // Decision region tints (rectangular pixmap from the same grid)
+  const regionRects = useMemo(() => {
+    if (!grid || !showDecisionRegion) return null;
+    const { Z, nx, ny } = grid;
+    const px0 = x2px(xMin), px1 = x2px(xMax);
+    const py0 = y2px(yMin), py1 = y2px(yMax);
+    const cellW = (px1 - px0) / (nx - 1);
+    const cellH = (py0 - py1) / (ny - 1); // y-flipped
+    const rects = [];
+    for (let j = 0; j < ny - 1; j++) {
+      for (let i = 0; i < nx - 1; i++) {
+        const v = 0.25 * (Z[j * nx + i] + Z[j * nx + i + 1] + Z[(j + 1) * nx + i] + Z[(j + 1) * nx + i + 1]);
+        const conf = Math.max(0, Math.min(1, Math.abs(v)));
+        const opacity = 0.04 + 0.13 * conf;
+        const fill = v > 0 ? "var(--class-a)" : "var(--class-b)";
+        const cellX = px0 + i * cellW;
+        const cellY = py1 + (ny - 2 - j) * cellH;
+        rects.push({ x: cellX, y: cellY, w: cellW + 0.5, h: cellH + 0.5, fill, opacity });
+      }
+    }
+    return rects;
+  }, [grid, showDecisionRegion, xMin, xMax, yMin, yMax]);
+
+  const handleMouseDownPoint = (e, p) => { e.stopPropagation(); setDraggingId(p.id); };
+  const handleMouseMove = (e) => {
+    if (draggingId === null || !svgRef.current) return;
+    const rect = svgRef.current.getBoundingClientRect();
+    const px = ((e.clientX - rect.left) / rect.width) * W;
+    const py = ((e.clientY - rect.top) / rect.height) * H;
+    const x = px2x(px), y = py2y(py);
+    setPoints((prev) => prev.map((p) => p.id === draggingId ? { ...p, features: [x, y] } : p));
+  };
+  const handleMouseUp = () => setDraggingId(null);
+
+  return (
+    <svg
+      ref={svgRef}
+      viewBox={`0 0 ${W} ${H}`}
+      style={{
+        width: "100%", height: "auto",
+        background: "var(--canvas-bg)",
+        borderRadius: "4px",
+        cursor: draggingId !== null ? "grabbing" : "default",
+        userSelect: "none", touchAction: "none",
+      }}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+    >
+      {regionRects && regionRects.map((r, i) => (
+        <rect key={i} x={r.x} y={r.y} width={r.w} height={r.h} fill={r.fill} opacity={r.opacity} />
+      ))}
+
+      <rect x={PAD} y={PAD} width={W - 2 * PAD} height={H - 2 * PAD}
+        fill="none" stroke="var(--axis)" strokeWidth="1" />
+
+      {showMargins && contours && contours.marginPos.map(([a, b], i) => (
+        <line key={`mp${i}`} x1={x2px(a[0])} y1={y2px(a[1])} x2={x2px(b[0])} y2={y2px(b[1])}
+          stroke="var(--margin-line)" strokeWidth="1" strokeDasharray="3 3" opacity="0.6" />
+      ))}
+      {showMargins && contours && contours.marginNeg.map(([a, b], i) => (
+        <line key={`mn${i}`} x1={x2px(a[0])} y1={y2px(a[1])} x2={x2px(b[0])} y2={y2px(b[1])}
+          stroke="var(--margin-line)" strokeWidth="1" strokeDasharray="3 3" opacity="0.6" />
+      ))}
+
+      {contours && contours.decision.map(([a, b], i) => (
+        <line key={`d${i}`} x1={x2px(a[0])} y1={y2px(a[1])} x2={x2px(b[0])} y2={y2px(b[1])}
+          stroke="var(--accent)" strokeWidth="2.2" />
+      ))}
+
+      {points.map((p) => {
+        const isA = p.label === 1;
+        const cx = x2px(p.features[0]);
+        const cy = y2px(p.features[1]);
+        const isSV = showSupportVectors && svTypeById.has(p.id);
+        const svKind = isSV ? svTypeById.get(p.id) : null;
+        const isHovered = hoveredId === p.id;
+        const isDragging = draggingId === p.id;
+        return (
+          <g key={p.id}>
+            {isSV && svKind === "margin" && (
+              <circle cx={cx} cy={cy} r={9} fill="none"
+                stroke="var(--sv-ring)" strokeWidth="1.8" opacity="0.9" />
+            )}
+            {isSV && svKind === "slack" && (
+              <circle cx={cx} cy={cy} r={9} fill="none"
+                stroke="var(--warn)" strokeWidth="1.8"
+                strokeDasharray="2.5 2.5" opacity="0.9" />
+            )}
+            <circle
+              cx={cx} cy={cy}
+              r={isHovered || isDragging ? 6 : 4.5}
+              fill={isA ? "var(--class-a)" : "var(--class-b)"}
+              stroke="var(--canvas-bg)"
+              strokeWidth="1.5"
+              style={{ cursor: "grab" }}
+              onMouseDown={(e) => handleMouseDownPoint(e, p)}
+              onMouseEnter={() => setHoveredId(p.id)}
+              onMouseLeave={() => setHoveredId(null)}
+            />
+          </g>
+        );
+      })}
+
+      {isSolving && (
+        <g transform={`translate(${W - 60}, 24)`}>
+          <circle r="3" fill="var(--accent)" cx="-12" cy="-3">
+            <animate attributeName="opacity" values="0.3;1;0.3" dur="0.9s" repeatCount="indefinite" />
+          </circle>
+          <text x="0" y="0" textAnchor="end" fontSize="10"
+            fontFamily="var(--font-mono)" fill="var(--text-dim)" letterSpacing="0.5">
+            solving…
+          </text>
+        </g>
+      )}
+
+      {!solution && !isSolving && (
+        <text x={W / 2} y={H / 2} textAnchor="middle"
+          fontSize="14" fontFamily="var(--font-display)"
+          fontStyle="italic" fill="var(--text-dim)">
+          no solution
+        </text>
+      )}
+
+      <g transform={`translate(${PAD + 6}, ${PAD + 14})`}>
+        <text fontSize="10" fontFamily="var(--font-mono)" fill="var(--text-dim)">
+          f(x) = Σ α<tspan baselineShift="sub" fontSize="7">i</tspan> y<tspan baselineShift="sub" fontSize="7">i</tspan> K(x<tspan baselineShift="sub" fontSize="7">i</tspan>, x) + b
+        </text>
+      </g>
+    </svg>
+  );
+}
+
+// ============================================================================
+// LOG-SCALE TICK LABELS
+// Positions each tick at its actual fractional location along a log slider,
+// so the visible label aligns with the value the slider thumb represents.
+// ============================================================================
+function LogTicks({ values, sliderMin, sliderMax }) {
+  // sliderMin/Max are in log10-space. Each value is in linear space.
+  const span = sliderMax - sliderMin;
+  return (
+    <div className="ks-log-ticks">
+      {values.map((v, i) => {
+        const pct = ((Math.log10(v) - sliderMin) / span) * 100;
+        return (
+          <span key={i} className="ks-log-tick" style={{ left: `${pct}%` }}>
+            {v}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+// ============================================================================
+// EDITABLE NUMERIC INPUT
+// ============================================================================
+function ParamInput({ value, onCommit, min, max }) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState("");
+  const display = editing ? text : value.toFixed(2);
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      className="ks-input"
+      value={display}
+      onFocus={(e) => { setEditing(true); setText(value.toFixed(2)); e.target.select(); }}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => {
+        const v = parseFloat(text);
+        if (!Number.isNaN(v)) {
+          let clamped = v;
+          if (min !== undefined) clamped = Math.max(min, clamped);
+          if (max !== undefined) clamped = Math.min(max, clamped);
+          if (Math.abs(clamped - value) > 1e-9) onCommit(clamped);
+        }
+        setEditing(false);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.target.blur();
+        else if (e.key === "Escape") { setText(value.toFixed(2)); setEditing(false); e.target.blur(); }
+      }}
+    />
+  );
+}
+
+// ============================================================================
+// MAIN APP
+// ============================================================================
+function KernelSVMTool() {
+  const [datasetKey, setDatasetKey] = useState("moons");
+  const [seed, setSeed] = useState(42);
+
+  const initialData = useMemo(() => DATASET_FACTORIES[datasetKey].make(seed), [datasetKey, seed]);
+  const [points, setPoints] = useState(initialData.points);
+  useEffect(() => { setPoints(initialData.points); }, [initialData]);
+
+  const [kernelType, setKernelType] = useState("rbf");
+  const [kernelParams, setKernelParams] = useState({
+    rbf: { ...KERNEL_DEFAULTS.rbf },
+    poly: { ...KERNEL_DEFAULTS.poly },
+    sigmoid: { ...KERNEL_DEFAULTS.sigmoid },
+  });
+  const updateParam = (k, v) => setKernelParams((p) => ({ ...p, [kernelType]: { ...p[kernelType], [k]: v } }));
+
+  const [cValue, setCValue] = useState(10);
+  const [showDecisionRegion, setShowDecisionRegion] = useState(true);
+  const [showMargins, setShowMargins] = useState(true);
+  const [showSupportVectors, setShowSupportVectors] = useState(true);
+  const [gridSize, setGridSize] = useState(80);
+
+  const [solution, setSolution] = useState(null);
+  const [isSolving, setIsSolving] = useState(false);
+
+  useEffect(() => {
+    setIsSolving(true);
+    let cancelled = false;
+    const handle = requestAnimationFrame(() => {
+      const kFn = makeKernel(kernelType, kernelParams[kernelType]);
+      const sol = solveKernelSVM(points, kFn, { C: cValue });
+      if (!cancelled) {
+        setSolution(sol);
+        setIsSolving(false);
+      }
+    });
+    return () => { cancelled = true; cancelAnimationFrame(handle); };
+  }, [points, kernelType, kernelParams, cValue]);
+
+  const params = kernelParams[kernelType];
+
+  return (
+    <div className="ks-app">
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        :root {
+          --bg: #0d1014;
+          --panel: #151920;
+          --panel-2: #1c222c;
+          --canvas-bg: #0a0d11;
+          --border: #2a3140;
+          --text: #e8ecf2;
+          --text-dim: #8a93a3;
+          --text-muted: #5a6478;
+          --accent: #c9a961;
+          --accent-bright: #e6c97a;
+          --class-a: #6db4d8;
+          --class-b: #d87b6d;
+          --sv-ring: #f0d878;
+          --margin-line: #c9a961;
+          --warn: #d87b6d;
+          --grid: #1f2530;
+          --axis: #3d4654;
+          --font-display: 'Cormorant Garamond', Georgia, serif;
+          --font-body: 'Inter', -apple-system, sans-serif;
+          --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+        }
+
+        .ks-app {
+          background: var(--bg);
+          color: var(--text);
+          min-height: 100vh;
+          padding: 28px;
+          font-family: var(--font-body);
+          font-size: 14px;
+          line-height: 1.5;
+          background-image:
+            radial-gradient(circle at 20% 0%, rgba(201, 169, 97, 0.04), transparent 50%),
+            radial-gradient(circle at 80% 100%, rgba(109, 180, 216, 0.03), transparent 50%);
+        }
+
+        .ks-header {
+          max-width: 1280px; margin: 0 auto 24px;
+          padding-bottom: 18px; border-bottom: 1px solid var(--border);
+        }
+        .ks-title {
+          font-family: var(--font-display);
+          font-weight: 500; font-size: 32px;
+          letter-spacing: 0.5px; margin: 0; line-height: 1.1;
+        }
+        .ks-title em { color: var(--accent); font-style: italic; }
+        .ks-subtitle {
+          font-family: var(--font-mono); font-size: 11px;
+          color: var(--text-muted); letter-spacing: 1.5px;
+          text-transform: uppercase; margin-top: 6px;
+        }
+
+        .ks-layout {
+          max-width: 1280px; margin: 0 auto;
+          display: grid; grid-template-columns: 1fr 320px; gap: 24px;
+        }
+        @media (max-width: 1000px) { .ks-layout { grid-template-columns: 1fr; } }
+
+        .ks-canvas-wrap {
+          background: var(--panel);
+          border: 1px solid var(--border);
+          border-radius: 6px; padding: 16px;
+        }
+
+        .ks-controls { display: flex; flex-direction: column; gap: 16px; }
+        .ks-panel {
+          background: var(--panel);
+          border: 1px solid var(--border);
+          border-radius: 6px; padding: 18px;
+        }
+        .ks-panel h3 {
+          font-family: var(--font-display);
+          font-weight: 500; font-size: 17px;
+          margin: 0 0 14px 0; color: var(--text);
+          letter-spacing: 0.3px;
+        }
+        .ks-panel h3 .num {
+          font-family: var(--font-mono); font-size: 10px;
+          color: var(--accent); margin-right: 8px; letter-spacing: 1px;
+        }
+
+        .ks-row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+        .ks-row:last-child { margin-bottom: 0; }
+        .ks-label {
+          font-family: var(--font-mono); font-size: 10px;
+          letter-spacing: 1px; text-transform: uppercase;
+          color: var(--text-muted); min-width: 60px;
+        }
+
+        .ks-segmented {
+          display: flex; background: var(--canvas-bg);
+          border: 1px solid var(--border);
+          border-radius: 4px; overflow: hidden; flex: 1;
+        }
+        .ks-segmented button {
+          flex: 1; background: transparent;
+          color: var(--text-dim); border: none;
+          padding: 8px 10px;
+          font-family: var(--font-mono); font-size: 11px;
+          letter-spacing: 0.5px; cursor: pointer;
+          transition: all 0.15s;
+          border-right: 1px solid var(--border);
+        }
+        .ks-segmented button:last-child { border-right: none; }
+        .ks-segmented button:hover { color: var(--text); background: var(--panel-2); }
+        .ks-segmented button.active {
+          background: var(--accent); color: var(--bg); font-weight: 500;
+        }
+
+        .ks-dataset { display: flex; flex-direction: column; gap: 6px; }
+        .ks-dataset-button {
+          background: var(--canvas-bg);
+          border: 1px solid var(--border);
+          border-radius: 4px; padding: 10px 12px;
+          text-align: left; cursor: pointer;
+          transition: all 0.15s; color: var(--text-dim);
+          display: flex; flex-direction: column; gap: 2px;
+        }
+        .ks-dataset-button:hover { border-color: var(--accent); color: var(--text); }
+        .ks-dataset-button.active {
+          border-color: var(--accent);
+          background: rgba(201, 169, 97, 0.08);
+          color: var(--text);
+        }
+        .ks-dataset-name {
+          font-family: var(--font-display); font-size: 14px;
+          font-style: italic; font-weight: 500;
+        }
+        .ks-dataset-desc {
+          font-family: var(--font-mono); font-size: 9px;
+          color: var(--text-muted);
+          letter-spacing: 0.5px; text-transform: uppercase;
+        }
+        .ks-dataset-button.active .ks-dataset-name { color: var(--accent); }
+
+        .ks-button {
+          background: var(--accent); color: var(--bg);
+          border: none; padding: 8px 14px;
+          font-family: var(--font-mono); font-size: 10px;
+          letter-spacing: 1.2px; text-transform: uppercase;
+          font-weight: 500; cursor: pointer;
+          border-radius: 4px; transition: all 0.15s;
+        }
+        .ks-button:hover { background: var(--accent-bright); }
+        .ks-button.secondary {
+          background: var(--panel-2); color: var(--text);
+          border: 1px solid var(--border);
+        }
+        .ks-button.secondary:hover { background: var(--canvas-bg); border-color: var(--accent); }
+
+        .ks-input {
+          width: 100%;
+          background: var(--canvas-bg);
+          border: 1px solid var(--grid);
+          border-radius: 3px; color: var(--text);
+          font-family: var(--font-mono); font-size: 11px;
+          font-variant-numeric: tabular-nums;
+          text-align: right; padding: 5px 8px;
+          outline: none; transition: border-color 0.15s;
+        }
+        .ks-input:hover { border-color: var(--border); }
+        .ks-input:focus { border-color: var(--accent); background: var(--bg); }
+
+        .ks-slider {
+          width: 100%; margin-top: 6px;
+          -webkit-appearance: none; appearance: none;
+          height: 4px; background: var(--canvas-bg);
+          border-radius: 2px; outline: none;
+        }
+        .ks-slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          width: 14px; height: 14px;
+          background: var(--accent);
+          border-radius: 50%; cursor: grab;
+          border: 2px solid var(--bg);
+        }
+        .ks-slider::-moz-range-thumb {
+          width: 14px; height: 14px;
+          background: var(--accent);
+          border-radius: 50%; cursor: grab;
+          border: 2px solid var(--bg);
+        }
+
+        .ks-checkbox {
+          display: flex; align-items: center; gap: 8px;
+          cursor: pointer;
+          font-family: var(--font-mono); font-size: 11px;
+          color: var(--text-dim); margin-bottom: 6px;
+        }
+        .ks-checkbox:last-child { margin-bottom: 0; }
+        .ks-checkbox input { accent-color: var(--accent); }
+
+        .ks-stats {
+          display: grid; grid-template-columns: 1fr auto;
+          gap: 6px 12px;
+          font-family: var(--font-mono); font-size: 11px;
+        }
+        .ks-stats dt {
+          color: var(--text-muted);
+          font-size: 10px; letter-spacing: 0.5px;
+        }
+        .ks-stats dt .swatch {
+          display: inline-block;
+          width: 8px; height: 8px; border-radius: 50%;
+          margin-right: 6px; vertical-align: middle;
+        }
+        .ks-stats dd {
+          margin: 0; color: var(--text);
+          font-variant-numeric: tabular-nums; text-align: right;
+        }
+
+        .ks-c-display {
+          display: flex; align-items: baseline;
+          justify-content: space-between; margin-bottom: 8px;
+        }
+        .ks-c-label {
+          font-family: var(--font-mono); font-size: 11px;
+          color: var(--accent); letter-spacing: 1px;
+        }
+        .ks-c-val {
+          font-family: var(--font-mono); font-size: 16px;
+          color: var(--text); font-variant-numeric: tabular-nums;
+        }
+        .ks-c-scale {
+          display: flex; justify-content: space-between;
+          font-family: var(--font-mono); font-size: 9px;
+          color: var(--text-muted); margin-top: 4px;
+        }
+        .ks-log-ticks {
+          position: relative;
+          height: 14px;
+          margin-top: 4px;
+          font-family: var(--font-mono);
+          font-size: 9px;
+          color: var(--text-muted);
+        }
+        .ks-log-tick {
+          position: absolute;
+          transform: translateX(-50%);
+          white-space: nowrap;
+        }
+
+        .ks-legend {
+          display: flex; flex-wrap: wrap; gap: 14px;
+          font-family: var(--font-mono); font-size: 10px;
+          color: var(--text-dim); margin-top: 10px;
+          padding-top: 10px; border-top: 1px solid var(--border);
+        }
+        .ks-legend-item { display: flex; align-items: center; gap: 6px; }
+        .ks-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .ks-ring {
+          width: 12px; height: 12px;
+          border: 2px solid var(--sv-ring);
+          border-radius: 50%; box-sizing: border-box;
+        }
+        .ks-ring.slack {
+          border-color: var(--warn);
+          border-style: dashed;
+        }
+
+        .ks-equation {
+          font-family: var(--font-mono); font-size: 11px;
+          color: var(--text-dim);
+          background: var(--canvas-bg);
+          padding: 8px 10px; border-radius: 3px;
+          margin-bottom: 12px; text-align: center;
+        }
+        .ks-equation .accent { color: var(--accent); }
+      `}</style>
+
+      <div className="ks-header">
+        <h1 className="ks-title"><em>Kernel</em> SVM Explorer</h1>
+        <div className="ks-subtitle">interactive · soft-margin SVM · three datasets · three kernels</div>
+      </div>
+
+      <div className="ks-layout">
+        <div className="ks-canvas-wrap">
+          <KernelSVMCanvas
+            points={points}
+            setPoints={setPoints}
+            xRange={initialData.xRange}
+            yRange={initialData.yRange}
+            solution={solution}
+            isSolving={isSolving}
+            showDecisionRegion={showDecisionRegion}
+            showMargins={showMargins}
+            showSupportVectors={showSupportVectors}
+            gridSize={gridSize}
+          />
+          <div className="ks-legend">
+            <div className="ks-legend-item">
+              <div className="ks-dot" style={{ background: "var(--class-a)" }} />
+              <span>class +1</span>
+            </div>
+            <div className="ks-legend-item">
+              <div className="ks-dot" style={{ background: "var(--class-b)" }} />
+              <span>class −1</span>
+            </div>
+            <div className="ks-legend-item">
+              <div className="ks-ring" />
+              <span>margin SV</span>
+            </div>
+            <div className="ks-legend-item">
+              <div className="ks-ring slack" />
+              <span>slack SV</span>
+            </div>
+            <div className="ks-legend-item" style={{ marginLeft: "auto", color: "var(--text-muted)" }}>
+              drag points to perturb the data
+            </div>
+          </div>
+        </div>
+
+        <div className="ks-controls">
+          <div className="ks-panel">
+            <h3><span className="num">01</span>DATASET</h3>
+            <div className="ks-dataset">
+              {Object.entries(DATASET_FACTORIES).map(([key, info]) => (
+                <button key={key}
+                  className={`ks-dataset-button ${datasetKey === key ? "active" : ""}`}
+                  onClick={() => setDatasetKey(key)}>
+                  <span className="ks-dataset-name">{info.label}</span>
+                  <span className="ks-dataset-desc">{info.desc}</span>
+                </button>
+              ))}
+            </div>
+            <div className="ks-row" style={{ marginTop: 12 }}>
+              <button className="ks-button secondary" onClick={() => setSeed((s) => s + 1)} style={{ flex: 1 }}>
+                Resample
+              </button>
+              <button className="ks-button secondary" onClick={() => setPoints(initialData.points)} style={{ flex: 1 }}>
+                Reset Points
+              </button>
+            </div>
+          </div>
+
+          <div className="ks-panel">
+            <h3><span className="num">02</span>KERNEL</h3>
+            <div className="ks-row">
+              <div className="ks-segmented">
+                <button className={kernelType === "rbf" ? "active" : ""} onClick={() => setKernelType("rbf")}>RBF</button>
+                <button className={kernelType === "poly" ? "active" : ""} onClick={() => setKernelType("poly")}>Polynomial</button>
+                <button className={kernelType === "sigmoid" ? "active" : ""} onClick={() => setKernelType("sigmoid")}>Sigmoid</button>
+              </div>
+            </div>
+            {kernelType === "rbf" && (
+              <>
+                <div className="ks-equation">
+                  K(x, y) = exp(<span className="accent">−γ</span>·‖x − y‖²)
+                </div>
+                <div className="ks-row">
+                  <span className="ks-label">γ</span>
+                  <ParamInput value={params.gamma} onCommit={(v) => updateParam("gamma", v)} min={0.001} max={1000} />
+                </div>
+                <input type="range" className="ks-slider"
+                  min={Math.log10(0.05)} max={Math.log10(100)} step={0.01}
+                  value={Math.log10(params.gamma)}
+                  onChange={(e) => updateParam("gamma", Math.pow(10, parseFloat(e.target.value)))} />
+                <LogTicks values={[0.05, 0.1, 1, 10, 100]} sliderMin={Math.log10(0.05)} sliderMax={Math.log10(100)} />
+              </>
+            )}
+            {kernelType === "poly" && (
+              <>
+                <div className="ks-equation">
+                  K(x, y) = (<span className="accent">γ</span>·x·y + <span className="accent">r</span>)<sup className="accent">d</sup>
+                </div>
+                <div className="ks-row">
+                  <span className="ks-label">degree d</span>
+                  <div className="ks-segmented">
+                    {[2, 3, 4, 5].map((d) => (
+                      <button key={d} className={params.degree === d ? "active" : ""}
+                        onClick={() => updateParam("degree", d)}>{d}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="ks-row">
+                  <span className="ks-label">γ</span>
+                  <ParamInput value={params.gamma} onCommit={(v) => updateParam("gamma", v)} min={0.01} max={100} />
+                </div>
+                <div className="ks-row">
+                  <span className="ks-label">r (coef0)</span>
+                  <ParamInput value={params.coef0} onCommit={(v) => updateParam("coef0", v)} min={-10} max={10} />
+                </div>
+              </>
+            )}
+            {kernelType === "sigmoid" && (
+              <>
+                <div className="ks-equation">
+                  K(x, y) = tanh(<span className="accent">γ</span>·x·y + <span className="accent">r</span>)
+                </div>
+                <div className="ks-row">
+                  <span className="ks-label">γ</span>
+                  <ParamInput value={params.gamma} onCommit={(v) => updateParam("gamma", v)} min={0.01} max={100} />
+                </div>
+                <div className="ks-row">
+                  <span className="ks-label">r (coef0)</span>
+                  <ParamInput value={params.coef0} onCommit={(v) => updateParam("coef0", v)} min={-10} max={10} />
+                </div>
+                <div style={{
+                  fontFamily: "var(--font-mono)", fontSize: 9,
+                  color: "var(--text-muted)", marginTop: 8,
+                  letterSpacing: 0.3, lineHeight: 1.4,
+                }}>
+                  note: sigmoid is not always positive semi-definite,
+                  so the dual problem may be non-convex for some γ, r —
+                  the solver can give unexpected results.
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="ks-panel">
+            <h3><span className="num">03</span>REGULARIZATION</h3>
+            <div className="ks-c-display">
+              <span className="ks-c-label">C</span>
+              <span className="ks-c-val">{cValue >= 100 ? cValue.toFixed(0) : cValue >= 10 ? cValue.toFixed(1) : cValue.toFixed(2)}</span>
+            </div>
+            <input type="range" className="ks-slider"
+              min={Math.log10(0.1)} max={Math.log10(1000)} step={0.01}
+              value={Math.log10(cValue)}
+              onChange={(e) => setCValue(Math.pow(10, parseFloat(e.target.value)))} />
+            <LogTicks values={[0.1, 1, 10, 100, 1000]} sliderMin={Math.log10(0.1)} sliderMax={Math.log10(1000)} />
+          </div>
+
+          <div className="ks-panel">
+            <h3><span className="num">04</span>RESULTS</h3>
+            {solution ? (
+              <dl className="ks-stats">
+                <dt>training accuracy</dt>
+                <dd>{solution.correct} / {solution.total}
+                  <span style={{ color: "var(--text-muted)", marginLeft: 6 }}>
+                    ({(100 * solution.correct / solution.total).toFixed(1)}%)
+                  </span>
+                </dd>
+                <dt><span className="swatch" style={{ background: "var(--sv-ring)" }} />margin SVs</dt>
+                <dd>{solution.marginSVCount}</dd>
+                <dt><span className="swatch" style={{ background: "var(--warn)" }} />slack SVs</dt>
+                <dd>{solution.slackSVCount}</dd>
+                <dt>solver status</dt>
+                <dd style={{ fontSize: 9, letterSpacing: 0.5 }}>
+                  {solution.stopReason} @ {solution.stoppedAt}
+                </dd>
+              </dl>
+            ) : (
+              <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", color: "var(--text-dim)", fontSize: 13 }}>
+                no solution
+              </div>
+            )}
+          </div>
+
+          <div className="ks-panel">
+            <h3><span className="num">05</span>DISPLAY</h3>
+            <label className="ks-checkbox">
+              <input type="checkbox" checked={showDecisionRegion} onChange={(e) => setShowDecisionRegion(e.target.checked)} />
+              <span>shade decision regions</span>
+            </label>
+            <label className="ks-checkbox">
+              <input type="checkbox" checked={showMargins} onChange={(e) => setShowMargins(e.target.checked)} />
+              <span>show margin contours</span>
+            </label>
+            <label className="ks-checkbox">
+              <input type="checkbox" checked={showSupportVectors} onChange={(e) => setShowSupportVectors(e.target.checked)} />
+              <span>highlight support vectors</span>
+            </label>
+            <div className="ks-row" style={{ marginTop: 14 }}>
+              <span className="ks-label">grid</span>
+              <div className="ks-segmented">
+                {[60, 80, 120].map((g) => (
+                  <button key={g} className={gridSize === g ? "active" : ""}
+                    onClick={() => setGridSize(g)}>{g}</button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<KernelSVMTool />);
+</script>
+</body>
+</html>

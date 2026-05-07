@@ -290,6 +290,66 @@
     ]
   },
   {
+    "objectID": "05-applications.html",
+    "href": "05-applications.html",
+    "title": "6  Closing Remarks",
+    "section": "",
+    "text": "6.1 Where SVMs Work Well\nAt this stage, we have built the SVM idea in layers:\nThe final question is no longer how does the SVM work? It is:\nThis is a practical question. SVMs can be powerful classifiers, but they are not automatic winners. They work best when the geometry of the problem matches the way the model thinks about classification: through boundaries, margins, support vectors, and similarity.\nAn SVM is usually worth considering when the main goal is accurate classification and the boundary between classes is important. The model does not begin by estimating probabilities or modelling class distributions. It begins by asking where a good separating boundary should be placed.\nThis is useful in several common settings:\nAn SVM returns a classification rule and a decision score. That score is related to which side of the boundary an observation lies on, but it is not probability. If probabilities are central to the analysis, then a different model may be more natural.",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Closing Remarks</span>"
+    ]
+  },
+  {
+    "objectID": "05-applications.html#where-svms-work-well",
+    "href": "05-applications.html#where-svms-work-well",
+    "title": "6  Closing Remarks",
+    "section": "",
+    "text": "the classes are reasonably separable, at least after allowing a soft margin\nthe decision boundary is more important than coefficient interpretation\nnonlinear structure may exist, but manageable\n\n\n\nSVMs are natural when classification geometry matters more than probability modelling.",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Closing Remarks</span>"
+    ]
+  },
+  {
+    "objectID": "05-applications.html#an-svm-modelling-workflow",
+    "href": "05-applications.html#an-svm-modelling-workflow",
+    "title": "6  Closing Remarks",
+    "section": "6.2 An SVM Modelling Workflow",
+    "text": "6.2 An SVM Modelling Workflow\nA useful way to approach SVMs is to avoid starting with the most flexible model. Flexibility is valuable only when the data require it. Remember, statistical modelling is about parsimony.\nA reasonable SVM workflow is:\n\nPerform EDA on the predictors using the training data.\nFit a linear SVM and tune the cost parameter.\nIf the linear boundary is too restrictive, try a nonlinear kernel.\nTune the relevant parameters using cross-validation.\n\nThis workflow follows the building blocks we have used whilst covering the topic. Is this simple case good enough? If not, make it a little more complex.\n\n\n\n\n\n\nNoteA small warning about scaling\n\n\n\n\n\nSVMs are sensitive to the scale of the predictors because margins and kernels are built from norms or dot products. If predictors exist on drastically different scales, the larger-scale predictor can dominate the geometry of the classifier.\nIf you do scale the predictors with scale = TRUE in the svm function; then you need to be careful about the result. Methods such as predict and plot are safe with respect to scaling, but the coefficient and rho return objects are in the scaled predictor space.",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Closing Remarks</span>"
+    ]
+  },
+  {
+    "objectID": "05-applications.html#limitations",
+    "href": "05-applications.html#limitations",
+    "title": "6  Closing Remarks",
+    "section": "6.3 Limitations",
+    "text": "6.3 Limitations\nThe main practical limitations are:\n\nScaling matters. Predictors usually require standardisation before fitting.\nTuning matters. The cost parameter controls the soft margin, and nonlinear kernels introduce additional parameters such as gamma or polynomial degree.\nProbabilities are not primary. SVM scores can be calibrated, but probability estimation is not the model’s starting point.\nInterpretability can be limited. A linear SVM has some mild interpretability through its boundary; but, kernel SVMs are even harder to interpret directly.\nLarge training sets can be difficult. Kernel SVMs can become computationally expensive as the number of observations grows.\nCategorical and missing predictors need care. Predictors usually need to be encoded and cleaned before fitting the model.",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Closing Remarks</span>"
+    ]
+  },
+  {
+    "objectID": "05-applications.html#applications",
+    "href": "05-applications.html#applications",
+    "title": "6  Closing Remarks",
+    "section": "6.4 Applications",
+    "text": "6.4 Applications\nSVMs have been used successfully in many applied settings. The exact list is less important than the pattern. They are useful when classification is important, the predictor set is rich, and a good boundary can be learned from the data.\nTypical examples include:\n\ntext classification, where documents can be represented by many sparse word or phrase features\nimage or signal classification, where the feature representation may be high-dimensional\nbioinformatics, where the number of predictors can be large relative to the number of observations\n\nThese examples also show why SVMs became popular. They can perform well in high-dimensional feature spaces, and kernels give a principled way to add nonlinear flexibility.",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Closing Remarks</span>"
+    ]
+  },
+  {
+    "objectID": "05-applications.html#extensions-beyond-our-scope",
+    "href": "05-applications.html#extensions-beyond-our-scope",
+    "title": "6  Closing Remarks",
+    "section": "6.5 Extensions Beyond Our Scope",
+    "text": "6.5 Extensions Beyond Our Scope\nThe SVM framework has several extensions.\n\nSupport vector regression adapts the margin idea to regression problems.\nOne-class SVMs are used for novelty or outlier detection.\nMulticlass SVMs combine binary SVMs to handle more than two classes.\nStructured or ranking variants adapt the margin idea to more complex prediction tasks.",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>Closing Remarks</span>"
+    ]
+  },
+  {
     "objectID": "appendix-concepts.html",
     "href": "appendix-concepts.html",
     "title": "Appendix A — Some Mathematical Support",
